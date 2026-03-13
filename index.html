@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Zero Cargo312 — Китай → Бишкек</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f2ec; --surface: #fff; --card: #ffffff;
+      --red: #e63329; --red-soft: rgba(230,51,41,0.08);
+      --dark: #1a1a1a; --mid: #555; --muted: #999;
+      --border: #e8e4dc; --gold: #c8922a; --green: #1a8a4a;
+      --shadow: 0 2px 20px rgba(0,0,0,0.07);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--dark); min-height:100vh; overflow-x:hidden; }
+    .topbar { background:var(--dark); color:white; padding:18px 20px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+    .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:20px; letter-spacing:-0.5px; display:flex; align-items:center; gap:8px; }
+    .logo-dot { width:8px; height:8px; background:var(--red); border-radius:50%; animation:blink 2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .route-badge { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); border-radius:100px; padding:5px 12px; font-size:11px; font-weight:500; }
+    .nav { display:flex; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:60px; z-index:40; overflow-x:auto; scrollbar-width:none; }
+    .nav::-webkit-scrollbar { display:none; }
+    .nav-btn { flex:1; min-width:80px; padding:13px 8px 11px; border:none; background:transparent; font-family:'DM Sans',sans-serif; font-size:11px; font-weight:500; color:var(--muted); cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; border-bottom:2px solid transparent; transition:all 0.2s; }
+    .nav-btn.active { color:var(--red); border-bottom-color:var(--red); }
+    .nav-icon { font-size:18px; }
+    .screen { display:none; padding:0 0 100px; animation:fadeIn 0.3s ease; }
+    .screen.active { display:block; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .hero { background:var(--dark); padding:24px 20px 28px; position:relative; overflow:hidden; }
+    .hero::before { content:''; position:absolute; right:-40px; top:-40px; width:200px; height:200px; background:radial-gradient(circle,rgba(230,51,41,0.25) 0%,transparent 70%); pointer-events:none; }
+    .hero-label { font-size:11px; font-weight:500; color:var(--red); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px; }
+    .hero-title { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:white; line-height:1.15; margin-bottom:6px; }
+    .hero-title span { color:var(--red); }
+    .hero-sub { font-size:13px; color:rgba(255,255,255,0.5); margin-bottom:20px; }
+    .hero-stats { display:flex; gap:20px; }
+    .hero-stat { display:flex; flex-direction:column; }
+    .hero-stat strong { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; color:white; }
+    .hero-stat span { font-size:11px; color:rgba(255,255,255,0.45); margin-top:1px; }
+    .route-strip { background:var(--surface); margin:16px 16px 0; border-radius:16px; border:1px solid var(--border); padding:18px 16px; box-shadow:var(--shadow); }
+    .route-title { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; }
+    .route-line { display:flex; align-items:center; }
+    .route-city { display:flex; flex-direction:column; align-items:center; flex:0 0 auto; }
+    .route-dot { width:10px; height:10px; border-radius:50%; background:var(--red); border:2px solid white; box-shadow:0 0 0 2px var(--red); margin-bottom:6px; }
+    .route-name { font-size:11px; font-weight:600; color:var(--dark); text-align:center; }
+    .route-country { font-size:10px; color:var(--muted); }
+    .route-connector { flex:1; display:flex; flex-direction:column; align-items:center; padding:0 4px; margin-bottom:18px; }
+    .connector-line { width:100%; height:2px; background:repeating-linear-gradient(90deg,var(--red) 0,var(--red) 4px,transparent 4px,transparent 8px); }
+    .connector-days { font-size:9px; color:var(--muted); margin-top:4px; white-space:nowrap; }
+    .section { padding:16px 16px 0; }
+    .section-head { font-family:'Syne',sans-serif; font-size:16px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:10px; box-shadow:var(--shadow); }
+    .tariff-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .tariff-card { background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px 14px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
+    .tariff-card.featured { border-color:var(--red); background:linear-gradient(145deg,#fff 60%,rgba(230,51,41,0.04)); }
+    .tariff-card.featured::before { content:'ХИТ'; position:absolute; top:10px; right:-6px; background:var(--red); color:white; font-size:9px; font-weight:700; padding:3px 10px 3px 8px; letter-spacing:1px; }
+    .tariff-name { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:4px; }
+    .tariff-days { font-size:11px; color:var(--muted); margin-bottom:10px; }
+    .tariff-price { font-family:'Syne',sans-serif; font-size:18px; font-weight:800; color:var(--red); }
+    .tariff-unit { font-size:11px; color:var(--muted); font-weight:400; font-family:'DM Sans',sans-serif; }
+    .track-input-wrap { background:var(--surface); border:1.5px solid var(--border); border-radius:16px; padding:16px; margin:16px 16px 0; box-shadow:var(--shadow); }
+    .track-input-wrap label { display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+    .track-row { display:flex; gap:8px; }
+    .track-input { flex:1; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; padding:12px 14px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; color:var(--dark); outline:none; transition:border-color 0.2s; }
+    .track-input:focus { border-color:var(--red); }
+    .track-input::placeholder { color:var(--muted); font-weight:400; }
+    .btn-red { background:var(--red); color:white; border:none; border-radius:10px; padding:12px 18px; font-family:'Syne',sans-serif; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .track-result { margin:12px 16px 0; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); display:none; }
+    .track-result.show { display:block; animation:fadeIn 0.3s ease; }
+    .track-header { background:var(--dark); padding:14px 16px; display:flex; align-items:center; justify-content:space-between; }
+    .track-id { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; color:white; }
+    .track-status-badge { padding:4px 10px; border-radius:100px; font-size:11px; font-weight:600; }
+    .badge-transit { background:rgba(200,146,42,0.2); color:var(--gold); }
+    .badge-delivered { background:rgba(26,138,74,0.2); color:var(--green); }
+    .track-steps { padding:16px; }
+    .step { display:flex; gap:12px; position:relative; padding-bottom:16px; }
+    .step:last-child { padding-bottom:0; }
+    .step:not(:last-child)::before { content:''; position:absolute; left:11px; top:24px; width:2px; bottom:0; background:var(--border); }
+    .step-dot { width:24px; height:24px; border-radius:50%; border:2px solid var(--border); background:white; display:flex; align-items:center; justify-content:center; font-size:10px; flex-shrink:0; position:relative; z-index:1; }
+    .step-dot.done { background:var(--red); border-color:var(--red); color:white; }
+    .step-dot.current { background:var(--gold); border-color:var(--gold); color:white; box-shadow:0 0 0 4px rgba(200,146,42,0.2); }
+    .step-info { flex:1; }
+    .step-title { font-weight:600; font-size:13px; margin-bottom:2px; }
+    .step-meta { font-size:11px; color:var(--muted); }
+    .calc-wrap { margin:16px 16px 0; }
+    .input-group { margin-bottom:12px; }
+    .input-label { font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; display:block; }
+    .input-field { width:100%; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:13px 16px; font-family:'DM Sans',sans-serif; font-size:15px; color:var(--dark); outline:none; transition:border-color 0.2s; }
+    .input-field:focus { border-color:var(--red); }
+    .input-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .type-selector { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+    .type-btn { padding:12px; border:1.5px solid var(--border); border-radius:12px; background:var(--surface); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; color:var(--mid); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s; }
+    .type-btn.active { border-color:var(--red); background:var(--red-soft); color:var(--red); }
+    .calc-result { background:var(--dark); border-radius:16px; padding:20px; margin-top:16px; display:none; }
+    .calc-result.show { display:block; animation:fadeIn 0.3s ease; }
+    .result-label { font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+    .result-price { font-family:'Syne',sans-serif; font-size:36px; font-weight:800; color:white; margin-bottom:4px; }
+    .result-price span { font-size:18px; color:rgba(255,255,255,0.5); }
+    .result-days { font-size:13px; color:rgba(255,255,255,0.5); margin-bottom:16px; }
+    .result-breakdown { border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; display:flex; flex-direction:column; gap:6px; }
+    .breakdown-row { display:flex; justify-content:space-between; font-size:12px; color:rgba(255,255,255,0.4); }
+    .breakdown-row strong { color:rgba(255,255,255,0.7); }
+    .order-wrap { margin:16px 16px 0; }
+    .form-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:12px; box-shadow:var(--shadow); }
+    .form-card-title { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .btn-full { width:100%; background:var(--red); color:white; border:none; border-radius:14px; padding:16px; font-family:'Syne',sans-serif; font-size:15px; font-weight:700; cursor:pointer; letter-spacing:-0.2px; }
+    .success-screen { display:none; text-align:center; padding:60px 30px; }
+    .success-screen.show { display:block; animation:fadeIn 0.4s ease; }
+    .success-icon { font-size:64px; margin-bottom:20px; }
+    .success-title { font-family:'Syne',sans-serif; font-size:24px; font-weight:800; margin-bottom:10px; }
+    .success-sub { font-size:14px; color:var(--mid); line-height:1.5; margin-bottom:30px; }
+    .order-number { background:var(--red-soft); border:1.5px dashed var(--red); border-radius:12px; padding:16px; margin-bottom:24px; }
+    .order-number p { font-size:12px; color:var(--muted); margin-bottom:4px; }
+    .order-number strong { font-family:'Syne',sans-serif; font-size:20px; font-weight:800; color:var(--red); letter-spacing:2px; }
+    .toast { position:fixed; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--dark); color:white; padding:12px 20px; border-radius:100px; font-size:13px; font-weight:500; opacity:0; transition:all 0.3s; z-index:999; white-space:nowrap; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    select.input-field { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"></div>Zero Cargo312</div>
+  <div class="route-badge">🇨🇳 → 🇰🇬 Бишкек</div>
+</div>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchTab('home',this)"><span class="nav-icon">🏠</span>Главная</button>
+  <button class="nav-btn" onclick="switchTab('track',this)"><span class="nav-icon">📦</span>Трекинг</button>
+  <button class="nav-btn" onclick="switchTab('calc',this)"><span class="nav-icon">🧮</span>Калькул.</button>
+  <button class="nav-btn" onclick="switchTab('order',this)"><span class="nav-icon">📝</span>Заявка</button>
+</nav>
+
+<!-- HOME -->
+<div id="screen-home" class="screen active">
+  <div class="hero">
+    <div class="hero-label">Карго доставка</div>
+    <div class="hero-title">Китай →<br><span>Бишкек</span></div>
+    <div class="hero-sub">Доставка товаров за 7–14 дней</div>
+    <div class="hero-stats">
+      <div class="hero-stat"><strong>2.8$</strong><span>за кг</span></div>
+      <div class="hero-stat"><strong>7–14</strong><span>дней</span></div>
+      <div class="hero-stat"><strong>0%</strong><span>предоплата</span></div>
+    </div>
+  </div>
+
+  <div class="route-strip">
+    <div class="route-title">Маршрут доставки</div>
+    <div class="route-line">
+      <div class="route-city"><div class="route-dot"></div><div class="route-name">Гуанчжоу</div><div class="route-country">🇨🇳 Китай</div></div>
+      <div class="route-connector"><div class="connector-line"></div><div class="connector-days">5–7 дней</div></div>
+      <div class="route-city"><div class="route-dot"></div><div class="route-name">Урумчи</div><div class="route-country">🇨🇳 КПП</div></div>
+      <div class="route-connector"><div class="connector-line"></div><div class="connector-days">3–5 дней</div></div>
+      <div class="route-city"><div class="route-dot"></div><div class="route-name">Торугарт</div><div class="route-country">🇰🇬 Граница</div></div>
+      <div class="route-connector"><div class="connector-line"></div><div class="connector-days">3–4 дня</div></div>
+      <div class="route-city"><div class="route-dot"></div><div class="route-name">Бишкек</div><div class="route-country">🇰🇬 КГ</div></div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <div class="section-head">Тариф</div>
+    <div class="tariff-grid" style="grid-template-columns:1fr;">
+      <div class="tariff-card featured" style="display:flex;align-items:center;gap:16px;">
+        <div style="font-size:36px;">🚛</div>
+        <div style="flex:1;"><div class="tariff-name">Доставка Китай → Бишкек</div><div class="tariff-days">⏱ 7–14 дней • Склад: Рухий Мурас</div></div>
+        <div style="text-align:right;"><div class="tariff-price" style="font-size:26px;">2.8$</div><div class="tariff-unit">/ кг</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:10px;background:linear-gradient(135deg,#fff8f0,#fff);border-color:#f0d9b5;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">📲 Свяжитесь с нами</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <a href="https://wa.me/996505600542" style="display:flex;align-items:center;gap:12px;text-decoration:none;background:#e9fbe9;border:1px solid #b6e8b6;border-radius:12px;padding:12px 14px;">
+          <div style="width:38px;height:38px;background:#25D366;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">💬</div>
+          <div><div style="font-size:11px;color:#1a8a4a;font-weight:600;">WhatsApp</div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#1a1a1a;">+996 505 600 542</div></div>
+          <div style="margin-left:auto;font-size:18px;color:#25D366;">›</div>
+        </a>
+        <a href="https://instagram.com/zero_cargo.313" style="display:flex;align-items:center;gap:12px;text-decoration:none;background:linear-gradient(135deg,#fef0f9,#f0f0ff);border:1px solid #e8c8e8;border-radius:12px;padding:12px 14px;">
+          <div style="width:38px;height:38px;background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">📸</div>
+          <div><div style="font-size:11px;color:#cc2366;font-weight:600;">Instagram</div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:#1a1a1a;">@zero_cargo.313</div></div>
+          <div style="margin-left:auto;font-size:18px;color:#cc2366;">›</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <div class="section-head">Мой код клиента</div>
+    <div id="myCodeCard" style="background:var(--dark);border-radius:16px;padding:18px;margin-bottom:10px;position:relative;overflow:hidden;">
+      <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;background:radial-gradient(circle,rgba(230,51,41,0.3),transparent 70%);pointer-events:none;"></div>
+      <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">🪪 Ваш персональный код</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+        <div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;color:white;letter-spacing:2px;" id="myClientCode">ZC-····</div>
+        <button onclick="copyCode()" id="codeBtn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:8px 12px;color:white;font-size:12px;font-weight:600;cursor:pointer;">📋 Копировать</button>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.35);" id="myClientName">Загрузка...</div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,#fff8f0,#fff);border-color:#f0d9b5;border-left:3px solid var(--red);">
+      <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">🇨🇳 Адрес склада</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;gap:10px;"><span style="font-size:16px;width:24px;">👤</span><div><div style="font-size:11px;color:var(--muted);">收件人 / Получатель</div><div style="font-weight:700;font-size:14px;">VXMMM</div></div></div>
+        <div style="display:flex;gap:10px;"><span style="font-size:16px;width:24px;">📞</span><div><div style="font-size:11px;color:var(--muted);">电话 / Телефон</div><div style="font-weight:700;font-size:14px;">135 4510 0875</div></div></div>
+        <div style="display:flex;gap:10px;"><span style="font-size:16px;width:24px;">📍</span><div><div style="font-size:11px;color:var(--muted);margin-bottom:3px;">地址 / Адрес</div><div style="font-size:13px;font-weight:500;line-height:1.5;">广东省佛山市南海区里广路洲村工业区飞机场13-2号</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Гуандун, Фошань, Наньхай</div></div></div>
+      </div>
+      <div style="margin-top:14px;background:var(--dark);border-radius:10px;padding:12px 14px;">
+        <div style="font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">⚠️ Напишите продавцу в примечании</div>
+        <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:white;">（TSL КАРГО）<span style="color:var(--red);" id="codeInAddress">ZC-····</span></div>
+      </div>
+      <button onclick="copyAddress()" id="copyBtn" style="margin-top:12px;width:100%;background:transparent;border:1.5px dashed var(--red);border-radius:10px;padding:10px;font-size:13px;font-weight:600;color:var(--red);cursor:pointer;">📋 Скопировать полный адрес</button>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:8px;padding-bottom:16px;">
+    <div class="section-head">Почему мы</div>
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:12px;align-items:center;"><div style="font-size:24px;width:36px;text-align:center;">🔒</div><div><div style="font-weight:600;font-size:13px;">Страхование груза</div><div style="font-size:12px;color:var(--muted);">Возмещение до 100% стоимости</div></div></div>
+        <div style="display:flex;gap:12px;align-items:center;"><div style="font-size:24px;width:36px;text-align:center;">📱</div><div><div style="font-weight:600;font-size:13px;">Трекинг в реальном времени</div><div style="font-size:12px;color:var(--muted);">SMS и Telegram уведомления</div></div></div>
+        <div style="display:flex;gap:12px;align-items:center;"><div style="font-size:24px;width:36px;text-align:center;">🏪</div><div><div style="font-weight:600;font-size:13px;">Склад в Гуанчжоу и Иу</div><div style="font-size:12px;color:var(--muted);">Консолидация и упаковка</div></div></div>
+        <div style="display:flex;gap:12px;align-items:center;"><div style="font-size:24px;width:36px;text-align:center;">🛃</div><div><div style="font-weight:600;font-size:13px;">Таможенное оформление</div><div style="font-size:12px;color:var(--muted);">Берём всё на себя</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRACK -->
+<div id="screen-track" class="screen">
+  <div class="track-input-wrap">
+    <label>Номер трек-кода</label>
+    <div class="track-row">
+      <input type="text" class="track-input" id="trackInput" placeholder="ZC-2024-XXXXX" maxlength="15">
+      <button class="btn-red" onclick="doTrack()">Найти</button>
+    </div>
+  </div>
+  <div class="track-result" id="trackResult">
+    <div class="track-header">
+      <div class="track-id" id="trackIdDisplay"></div>
+      <div class="track-status-badge" id="trackBadge"></div>
+    </div>
+    <div class="track-steps" id="trackSteps"></div>
+  </div>
+  <div class="section" style="margin-top:16px;">
+    <div class="section-head">Мои посылки</div>
+    <div class="card" onclick="fillTrack('ZC-2024-08821')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-weight:600;font-size:13px;">ZC-2024-08821</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Электроника • 12 кг</div></div>
+        <div style="text-align:right;"><div style="font-size:11px;font-weight:600;color:var(--gold);">В ПУТИ</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Торугарт</div></div>
+      </div>
+    </div>
+    <div class="card" onclick="fillTrack('ZC-2024-07543')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-weight:600;font-size:13px;">ZC-2024-07543</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Одежда • 45 кг</div></div>
+        <div style="text-align:right;"><div style="font-size:11px;font-weight:600;color:var(--green);">ДОСТАВЛЕН</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">05 фев 2025</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CALC -->
+<div id="screen-calc" class="screen">
+  <div class="calc-wrap">
+    <div class="card">
+      <div class="form-card-title">🧮 Расчёт стоимости</div>
+      <div class="input-group">
+        <span class="input-label">Тип груза</span>
+        <div class="type-selector">
+          <button class="type-btn active" onclick="selectType(this,'cargo')">📦 Обычный</button>
+          <button class="type-btn" onclick="selectType(this,'fragile')">🏺 Хрупкий</button>
+          <button class="type-btn" onclick="selectType(this,'clothes')">👗 Одежда</button>
+          <button class="type-btn" onclick="selectType(this,'electronics')">📱 Электро</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <span class="input-label">Способ доставки</span>
+        <select class="input-field" id="calcMethod">
+          <option value="auto">🚛 Авто — 7–14 дней (2.8$ / кг)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <span class="input-label">Вес и габариты</span>
+        <input type="number" class="input-field" id="calcWeight" placeholder="Вес, кг" min="0.1" style="margin-bottom:8px;">
+        <div class="input-row">
+          <input type="number" class="input-field" id="calcL" placeholder="Дл, см">
+          <input type="number" class="input-field" id="calcW" placeholder="Шир, см">
+          <input type="number" class="input-field" id="calcH" placeholder="Выс, см">
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;">* Объёмный вес = Д×Ш×В / 6000</div>
+      </div>
+      <button class="btn-full" onclick="calcPrice()">Рассчитать →</button>
+    </div>
+    <div class="calc-result" id="calcResult">
+      <div class="result-label">Итоговая стоимость</div>
+      <div class="result-price" id="resultPrice">0 <span>USD</span></div>
+      <div class="result-days" id="resultDays"></div>
+      <div class="result-breakdown" id="resultBreakdown"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER -->
+<div id="screen-order" class="screen">
+  <div id="orderForm">
+    <div class="order-wrap">
+      <div class="form-card">
+        <div class="form-card-title">👤 Контактные данные</div>
+        <div class="input-group"><span class="input-label">Ваше имя</span><input type="text" class="input-field" id="oName" placeholder="Иван Иванов"></div>
+        <div class="input-group"><span class="input-label">Телефон (WhatsApp)</span><input type="tel" class="input-field" id="oPhone" placeholder="+996 XXX XXX XXX"></div>
+        <div class="input-group" style="margin-bottom:0;"><span class="input-label">Адрес доставки в Бишкеке</span><input type="text" class="input-field" id="oAddress" placeholder="Рухий Мурас, ваш адрес..."></div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">📦 Информация о грузе</div>
+        <div class="input-group"><span class="input-label">Описание товара</span><input type="text" class="input-field" id="oDesc" placeholder="Одежда, обувь, электроника..."></div>
+        <div class="input-group"><span class="input-label">Ориентировочный вес</span><input type="number" class="input-field" id="oWeight" placeholder="кг"></div>
+        <div class="input-group"><span class="input-label">Способ доставки</span><select class="input-field" id="oMethod"><option>🚛 Авто — 7–14 дней (2.8$ / кг)</option></select></div>
+        <div class="input-group" style="margin-bottom:0;"><span class="input-label">Комментарий</span><input type="text" class="input-field" id="oComment" placeholder="Доп. пожелания..."></div>
+      </div>
+      <button class="btn-full" onclick="submitOrder()" style="margin:0 0 20px;">Отправить заявку →</button>
+    </div>
+  </div>
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">Заявка принята!</div>
+    <div class="success-sub">Наш менеджер свяжется с вами в течение 30 минут</div>
+    <div class="order-number"><p>Номер вашей заявки</p><strong id="orderNum">ZC-2025-00001</strong></div>
+    <button class="btn-full" onclick="resetOrder()">Новая заявка</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  function genClientCode(userId) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let hash = Math.abs(userId * 2654435761 ^ (userId >> 16));
+    let code = '';
+    for (let i = 0; i < 4; i++) { code += chars[hash % chars.length]; hash = Math.floor(hash / chars.length) + (hash * 31); }
+    return 'ZC-' + code;
+  }
+
+  let myCode = 'ZC-DEMO', myFullName = 'Гость';
+  if (tg?.initDataUnsafe?.user) {
+    const u = tg.initDataUnsafe.user;
+    myFullName = [u.first_name, u.last_name].filter(Boolean).join(' ');
+    myCode = genClientCode(u.id);
+    document.getElementById('oName').value = myFullName;
+    if (u.username) document.getElementById('oPhone').placeholder = `@${u.username}`;
+  } else { myCode = 'ZC-K7RN'; myFullName = 'Демо клиент'; }
+
+  document.getElementById('myClientCode').textContent = myCode;
+  document.getElementById('myClientName').textContent = myFullName + ' · Ваш личный код не меняется';
+  document.getElementById('codeInAddress').textContent = myCode;
+
+  function copyCode() {
+    navigator.clipboard?.writeText(myCode).catch(()=>{});
+    const btn = document.getElementById('codeBtn');
+    btn.textContent = '✅ Скопировано!';
+    setTimeout(() => btn.textContent = '📋 Копировать', 2000);
+    showToast('🪪 Код ' + myCode + ' скопирован!');
+  }
+
+  function switchTab(id, btn) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  const trackData = {
+    'ZC-2024-08821': { badge:'badge-transit', label:'В пути', steps:[
+      {done:true,icon:'✓',title:'Принят на склад Гуанчжоу',meta:'15 янв 2025, 09:00'},
+      {done:true,icon:'✓',title:'Отправлен с китайского склада',meta:'18 янв 2025, 14:30'},
+      {done:true,icon:'✓',title:'Прибыл на КПП Торугарт',meta:'22 янв 2025, 11:00'},
+      {current:true,icon:'→',title:'Таможенное оформление',meta:'Ожидается: 24–25 янв'},
+      {done:false,icon:'○',title:'Склад Бишкек',meta:'—'},
+      {done:false,icon:'○',title:'Доставлен получателю',meta:'—'},
+    ]},
+    'ZC-2024-07543': { badge:'badge-delivered', label:'Доставлен', steps:[
+      {done:true,icon:'✓',title:'Принят на склад Иу',meta:'10 янв 2025'},
+      {done:true,icon:'✓',title:'Отправлен с китайского склада',meta:'13 янв 2025'},
+      {done:true,icon:'✓',title:'Прошёл таможню Торугарт',meta:'19 янв 2025'},
+      {done:true,icon:'✓',title:'Прибыл на склад Бишкек',meta:'03 фев 2025'},
+      {done:true,icon:'✓',title:'Доставлен получателю',meta:'05 фев 2025, 14:22'},
+    ]}
+  };
+
+  function fillTrack(id) {
+    document.getElementById('trackInput').value = id;
+    switchTab('track', document.querySelectorAll('.nav-btn')[1]);
+    setTimeout(doTrack, 100);
+  }
+
+  function doTrack() {
+    const id = document.getElementById('trackInput').value.trim().toUpperCase();
+    const result = document.getElementById('trackResult');
+    const data = trackData[id];
+    if (!data) { showToast('❌ Трек-код не найден'); result.classList.remove('show'); return; }
+    document.getElementById('trackIdDisplay').textContent = id;
+    document.getElementById('trackBadge').className = 'track-status-badge ' + data.badge;
+    document.getElementById('trackBadge').textContent = data.label;
+    document.getElementById('trackSteps').innerHTML = data.steps.map(s => `
+      <div class="step">
+        <div class="step-dot ${s.done?'done':s.current?'current':''}">${s.icon}</div>
+        <div class="step-info">
+          <div class="step-title" style="color:${s.current?'var(--gold)':s.done?'var(--dark)':'var(--muted)'}">${s.title}</div>
+          <div class="step-meta">${s.meta}</div>
+        </div>
+      </div>`).join('');
+    result.classList.add('show');
+  }
+
+  let selectedType = 'cargo';
+  const typeMultipliers = {cargo:1,fragile:1.2,clothes:1,electronics:1.15};
+  const methodData = {auto:{rate:2.8,days:'7–14'}};
+
+  function selectType(btn, type) {
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active'); selectedType = type;
+  }
+
+  function calcPrice() {
+    const weight = parseFloat(document.getElementById('calcWeight').value)||0;
+    const l = parseFloat(document.getElementById('calcL').value)||0;
+    const w = parseFloat(document.getElementById('calcW').value)||0;
+    const h = parseFloat(document.getElementById('calcH').value)||0;
+    const method = document.getElementById('calcMethod').value;
+    if (!weight && (!l||!w||!h)) { showToast('⚠️ Введите вес или габариты'); return; }
+    const volWeight = l&&w&&h ? (l*w*h)/6000 : 0;
+    const chargeWeight = Math.max(weight, volWeight);
+    const m = methodData[method];
+    const mult = typeMultipliers[selectedType];
+    const base = chargeWeight * m.rate * mult;
+    const insurance = base * 0.02;
+    const handling = chargeWeight < 5 ? 5 : 0;
+    const total = base + insurance + handling;
+    document.getElementById('resultPrice').innerHTML = `${total.toFixed(0)} <span>USD</span>`;
+    document.getElementById('resultDays').textContent = `Срок: ${m.days} дней`;
+    document.getElementById('resultBreakdown').innerHTML = `
+      <div class="breakdown-row"><span>Расч. вес</span><strong>${chargeWeight.toFixed(1)} кг</strong></div>
+      <div class="breakdown-row"><span>Тариф</span><strong>${(m.rate*mult).toFixed(2)}$ / кг</strong></div>
+      <div class="breakdown-row"><span>Страховка (2%)</span><strong>${insurance.toFixed(0)}$</strong></div>
+      ${handling>0?`<div class="breakdown-row"><span>Мин. сбор</span><strong>${handling}$</strong></div>`:''}`;
+    document.getElementById('calcResult').classList.add('show');
+  }
+
+  function submitOrder() {
+    const name = document.getElementById('oName').value.trim();
+    const phone = document.getElementById('oPhone').value.trim();
+    const address = document.getElementById('oAddress').value.trim();
+    const desc = document.getElementById('oDesc').value.trim();
+    if (!name||!phone||!address||!desc) { showToast('⚠️ Заполните все обязательные поля'); return; }
+    const num = 'ZC-2025-' + String(Math.floor(Math.random()*90000)+10000);
+    document.getElementById('orderNum').textContent = num;
+    if (tg) { tg.sendData(JSON.stringify({type:'order',name,phone,address,desc,orderNum:num})); }
+    document.getElementById('orderForm').style.display = 'none';
+    document.getElementById('successScreen').classList.add('show');
+  }
+
+  function resetOrder() {
+    document.getElementById('orderForm').style.display = 'block';
+    document.getElementById('successScreen').classList.remove('show');
+    ['oDesc','oWeight','oComment'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  function copyAddress() {
+    const text = `收件人：VXMMM\n电话：13545100875\n广东省佛山市南海区里广路洲村工业区飞机场13-2号\n（TSL КАРГО）${myCode}`;
+    navigator.clipboard?.writeText(text).catch(()=>{});
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ Скопировано!';
+    setTimeout(() => btn.textContent = '📋 Скопировать полный адрес', 2500);
+    showToast('📋 Адрес скопирован!');
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>
