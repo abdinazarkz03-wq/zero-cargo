@@ -8,7 +8,7 @@ Application, CommandHandler, MessageHandler,
 filters, ContextTypes, CallbackQueryHandler, ConversationHandler
 )
 
-BOT_TOKEN = os.environ.get(“BOT_TOKEN”, “8676654212:AAGEM9nhV2uP0a3NwAaBksFqwvSx37a5TsY”)
+BOT_TOKEN = os.environ.get(“BOT_TOKEN”, “8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU”)
 
 COMPANY_NAME = “Zero Cargo312”
 PERSONAL_CODE_PREFIX = “ZC”
