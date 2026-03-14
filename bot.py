@@ -1,263 +1,173 @@
 import os
+import logging
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler, ConversationHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(**name**)
 
-COMPANY_NAME = "Zero Cargo312"
-PREFIX = "ZC"
-WA = "https://wa.me/996505600542"
-IG = "https://instagram.com/zero_cargo.313"
-WEB = "https://t.me/zerocargo312_bot"
+TOKEN = os.environ.get(“BOT_TOKEN”, “8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU”)
 
+def gen_client_code(user_id: int) -> str:
+h = abs(user_id)
+h = ((h >> 16) ^ h) * 0x45d9f3b
+h = ((h >> 16) ^ h) * 0x45d9f3b
+h = (h >> 16) ^ h
+base = (abs(h) % 9000) + 1000
+seq  = (abs(user_id) % 9) + 1
+return f”{base}-{seq}”
+
+MAIN_MENU = ReplyKeyboardMarkup([
+[KeyboardButton(“👤 Профиль”),    KeyboardButton(“📍 Адреса”),      KeyboardButton(“📦 Мои посылки”)],
+[KeyboardButton(“📖 Инструкция”), KeyboardButton(“🚫 Запрещённое”), KeyboardButton(“⚙️ Поддержка”)],
+[KeyboardButton(“✅ Добавить трек”)],
+], resize_keyboard=True)
+
+CANCEL_MENU = ReplyKeyboardMarkup([[KeyboardButton(“⬅️ Отмена”)]], resize_keyboard=True)
 WAITING_TRACK = 1
 
-users_db = {}
+async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+user = update.effective_user
+code = gen_client_code(user.id)
+await update.message.reply_text(
+f”👋 Добро пожаловать, {user.full_name}!\n\n”
+f”🚚 *Zero Cargo312* — доставка из Китая в Бишкек\n”
+f”📦 Тариф: *2.8$ / кг* • Срок: *7–14 дней*\n\n”
+f”🪪 Ваш персональный код: *VXMMM {code}*\n”
+f”*Используйте его в примечании при заказе*”,
+parse_mode=“Markdown”, reply_markup=MAIN_MENU
+)
 
-def gen_code(uid):
-    chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    h = abs(uid * 2654435761) ^ (uid >> 16)
-    code = ""
-    for _ in range(4):
-        code += chars[h % len(chars)]
-        h = (h // len(chars)) + (h * 31)
-    return PREFIX + "-" + code[:4]
+async def profile(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+user = update.effective_user
+code = gen_client_code(user.id)
+username = f”@{user.username}” if user.username else “—”
+await update.message.reply_text(
+f”📋 *Ваш профиль*\n\n”
+f”🪪 Персональный КОД: *VXMMM {code}*\n”
+f”👤 Имя: *{user.full_name}*\n”
+f”📱 Username: {username}\n\n”
+f”*Ваш код не меняется — он привязан к Telegram аккаунту*”,
+parse_mode=“Markdown”, reply_markup=MAIN_MENU
+)
 
-def main_kb():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("👤 Профиль"), KeyboardButton("📋 Адреса"), KeyboardButton("📦 Мои посылки")],
-        [KeyboardButton("📕 Инструкция"), KeyboardButton("🚫 Запрещённые"), KeyboardButton("⚙️ Поддержка")],
-        [KeyboardButton("✅ Добавить трек")],
-    ], resize_keyboard=True, persistent=True)
+async def addresses(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+user = update.effective_user
+code = gen_client_code(user.id)
+await update.message.reply_text(
+f”📬 *Адрес склада в Китае 🇨🇳*\n\n”
+f”`收件人：VXMMM\n" f"电话：13545100875\n" f"广东省佛山市南海区里广路洲村工业区飞机场13-2号\n" f"（TSL КАРГО）VXMMM {code}`\n\n”
+f”⚠️ Обязательно укажите код *VXMMM {code}* в примечании продавцу!”,
+parse_mode=“Markdown”, reply_markup=MAIN_MENU
+)
 
-def cancel_kb():
-    return ReplyKeyboardMarkup([[KeyboardButton("⬅️ Отмена")]], resize_keyboard=True)
+async def my_parcels(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+kb = InlineKeyboardMarkup([
+[InlineKeyboardButton(“🚛 В пути”,  callback_data=“parcels_transit”)],
+[InlineKeyboardButton(“✅ В офисе”, callback_data=“parcels_office”)],
+])
+await update.message.reply_text(“📦 *Мои посылки:*”, parse_mode=“Markdown”, reply_markup=kb)
 
-def pkg_kb():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("🚛 В пути")],
-        [KeyboardButton("✅ В офисе")],
-        [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+async def instruction(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+kb = InlineKeyboardMarkup([
+[InlineKeyboardButton(“🛒 Пиндуодуо”, callback_data=“inst_pdd”)],
+[InlineKeyboardButton(“🛍 Таобао”,    callback_data=“inst_taobao”)],
+[InlineKeyboardButton(“📦 1688”,      callback_data=“inst_1688”)],
+])
+await update.message.reply_text(“📖 *Инструкция*\n\nВыберите маркетплейс:”, parse_mode=“Markdown”, reply_markup=kb)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    uid = user.id
+async def forbidden(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+await update.message.reply_text(
+“🚫 *Запрещённые к перевозке товары:*\n\n”
+“🔴 Наркотические и психотропные вещества\n”
+“🔴 Легковоспламеняющиеся, взрывоопасные вещества\n”
+“🔴 Острые, колющие, режущие предметы\n”
+“🔴 Оружие, имитация оружия\n”
+“🔴 Предметы военного характера\n”
+“🔴 Жидкие, сыпучие, порошковые вещества\n”
+“🔴 Электронные сигареты\n\n”
+“❓ Сомневаетесь — напишите нам в поддержку.\n\n”
+“⚠️ Штраф за нарушение: *10–50 тысяч* сом.”,
+parse_mode=“Markdown”, reply_markup=MAIN_MENU
+)
 
-    if uid not in users_db:
-        users_db[uid] = {
-            "code": gen_code(uid),
-            "name": (user.first_name or "") + " " + (user.last_name or ""),
-            "phone": "",
-            "address": "",
-        }
+async def support(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+kb = InlineKeyboardMarkup([
+[InlineKeyboardButton(“💬 WhatsApp”,  url=“https://wa.me/996505600542”)],
+[InlineKeyboardButton(“📸 Instagram”, url=“https://instagram.com/zero_cargo.312”)],
+])
+await update.message.reply_text(
+“⚙️ *Поддержка*\n\n”
+“📞 WhatsApp: +996 505 600 542\n”
+“📸 Instagram: @zero\_cargo.312”,
+parse_mode=“Markdown”, reply_markup=kb
+)
 
-    u = users_db[uid]
-    code = u["code"]
+async def add_track_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+await update.message.reply_text(
+“✅ *Добавить трек-код*\n\n”
+“Отправьте трек-код для отслеживания\n\n”
+“❗ Можно несколько через запятую:\n”
+“*(YT1111 носки, 67899876 куртка)*”,
+parse_mode=“Markdown”, reply_markup=CANCEL_MENU
+)
+return WAITING_TRACK
 
-    text = (
-        "👋 Добро пожаловать в " + COMPANY_NAME + "!\n\n"
-        "🪪 Персональный КОД: " + code + "\n"
-        "👤 ФИО: " + u["name"].strip() + "\n"
-        "📞 Номер: " + (u["phone"] or "не указан") + "\n"
-        "🏠 Адрес: " + (u["address"] or "не указан") + "\n\n"
-        "🇨🇳 Доставка Китай → Бишкек\n"
-        "💰 2.8$ / кг  •  ⏱ 7-14 дней"
-    )
+async def add_track_receive(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+text = update.message.text.strip()
+if text == “⬅️ Отмена”:
+await update.message.reply_text(“Вы отменили последнюю операцию.”, reply_markup=MAIN_MENU)
+return ConversationHandler.END
+tracks = [t.strip() for t in text.split(”,”) if t.strip()]
+lines = “\n”.join([f”✅ {t}” for t in tracks])
+await update.message.reply_text(
+f”📦 *Трек-коды добавлены:*\n\n{lines}\n\nМы уведомим вас когда посылка прибудет в Бишкек.”,
+parse_mode=“Markdown”, reply_markup=MAIN_MENU
+)
+return ConversationHandler.END
 
-    btns = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✏️ Изменить профиль", callback_data="edit")],
-        [InlineKeyboardButton("🌐 Сменить язык 🇰🇬", callback_data="lang")],
-        [InlineKeyboardButton("🌍 Личный кабинет", url=WEB)],
-    ])
+async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+await update.message.reply_text(“Вы отменили последнюю операцию.”, reply_markup=MAIN_MENU)
+return ConversationHandler.END
 
-    await update.message.reply_text(text, reply_markup=btns)
-    await update.message.reply_text("👇 Выберите раздел:", reply_markup=main_kb())
-
-async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-
-    if uid not in users_db:
-        await start(update, context)
-        return
-
-    u = users_db[uid]
-
-    text = (
-        "📋 Ваш профиль\n\n"
-        "🪪 КОД: " + u["code"] + "\n"
-        "👤 ФИО: " + u["name"].strip() + "\n"
-        "📞 Номер: " + (u["phone"] or "-") + "\n"
-        "🏠 Адрес: " + (u["address"] or "-") + "\n\n"
-        "📍 ПВЗ: Рухий Мурас\n"
-        "📞 +996 505 600 542\n"
-        "🕐 10:00 - 19:00"
-    )
-
-    await update.message.reply_text(
-        text,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🌍 Личный кабинет", url=WEB)],
-            [InlineKeyboardButton("🇰🇬 Тилди алмаштыруу", callback_data="lang")],
-        ])
-    )
-
-async def addresses(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    code = users_db.get(uid, {}).get("code", "ZC-XXXX")
-
-    await update.message.reply_text("📬 Адрес склада в Китае 🇨🇳:")
-
-    await update.message.reply_text(
-        "广东省佛山市南海区里广路洲村工业区飞机场13-2号\n"
-        "收件人: VXMMM\n"
-        "电话: 135 4510 0875\n"
-        "TSL КАРГО - " + code + "\n\n"
-        "⚠️ Напишите код " + code + " в примечании!"
-    )
-
-    await update.message.reply_text(
-        "🇰🇬 Выдача в Бишкеке:\n\n"
-        "📍 ПВЗ: Рухий Мурас\n"
-        "📞 +996 505 600 542\n"
-        "🕐 10:00 - 19:00",
-        reply_markup=main_kb()
-    )
-
-async def my_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "📦 Мои посылки:\n\nВыберите статус:",
-        reply_markup=pkg_kb()
-    )
-
-async def in_transit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🚛 Посылки в пути:\n\nДля деталей нажмите ✅ Добавить трек",
-        reply_markup=main_kb()
-    )
-
-async def in_office(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "✅ Посылки в офисе:\n\n📍 Рухий Мурас\n📞 +996 505 600 542",
-        reply_markup=main_kb()
-    )
-
-async def track_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "✅ Отправьте трек код\n\n"
-        "❗ Можно через запятую:\n"
-        "YT1111 носки, 67899876 куртка",
-        reply_markup=cancel_kb()
-    )
-    return WAITING_TRACK
-
-async def track_process(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-
-    if text == "⬅️ Отмена":
-        await update.message.reply_text("Отменено", reply_markup=main_kb())
-        return ConversationHandler.END
-
-    await update.message.reply_text(
-        "🔍 Трек-код " + text + " принят!\n\nСвяжитесь с менеджером для уточнения статуса.",
-        reply_markup=main_kb()
-    )
-
-    return ConversationHandler.END
-
-async def forbidden(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🚫 Запрещённые товары:\n\n"
-        "🔴 Лекарства, наркотики\n"
-        "🔴 Взрывчатые вещества\n"
-        "🔴 Жидкие и сыпучие\n"
-        "🔴 Электронные сигареты\n"
-        "🔴 Острые предметы\n\n"
-        "❗ Штраф: 10-50 тысяч сом",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💬 Спросить менеджера", url=WA)]
-        ]),
-    )
-
-    await update.message.reply_text("👇 Меню:", reply_markup=main_kb())
-
-async def instruction(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    code = users_db.get(uid, {}).get("code", "ZC-XXXX")
-
-    await update.message.reply_text(
-        "📕 Выберите маркетплейс:",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("Пиндуодуо", url="https://www.pinduoduo.com"),
-                InlineKeyboardButton("Таобао", url="https://www.taobao.com")
-            ],
-            [
-                InlineKeyboardButton("1688", url="https://www.1688.com"),
-                InlineKeyboardButton("JD", url="https://www.jd.com")
-            ],
-        ])
-    )
-
-    await update.message.reply_text(
-        "📖 Инструкция:\n\n"
-        "1️⃣ Выберите товар\n"
-        "2️⃣ Укажите адрес склада\n"
-        "3️⃣ Напишите код: " + code + "\n"
-        "4️⃣ Добавьте трек через бот\n"
-        "5️⃣ Уведомим о прибытии",
-        reply_markup=main_kb()
-    )
-
-async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "⚙️ Поддержка " + COMPANY_NAME + "\n\n"
-        "💬 WhatsApp: +996 505 600 542\n"
-        "📸 Instagram: @zero_cargo.313\n"
-        "🕐 09:00 - 20:00",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💬 WhatsApp", url=WA)],
-            [InlineKeyboardButton("📸 Instagram", url=IG)],
-        ])
-    )
-
-    await update.message.reply_text("👇 Меню:", reply_markup=main_kb())
-
-async def back(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👇 Меню:", reply_markup=main_kb())
-
-async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❓ Используйте кнопки меню 👇", reply_markup=main_kb())
+async def callback_handler(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+q = update.callback_query
+await q.answer()
+if q.data == “parcels_transit”:
+await q.edit_message_text(“🚛 *Посылки в пути:*\n\nПока нет посылок в пути.”, parse_mode=“Markdown”)
+elif q.data == “parcels_office”:
+await q.edit_message_text(“✅ *Посылки в офисе:*\n\nПока нет посылок в офисе.”, parse_mode=“Markdown”)
+elif q.data == “inst_pdd”:
+await q.edit_message_text(
+“🛒 *Пиндуодуо:*\n\n1. Найдите товар → Купить\n2. Введите адрес склада\n”
+“3. В примечании укажите ВАШ КОД\n4. Оплатите и добавьте трек в бота”, parse_mode=“Markdown”)
+elif q.data == “inst_taobao”:
+await q.edit_message_text(
+“🛍 *Таобао:*\n\n1. Найдите товар, выберите размер\n2. Введите адрес склада\n”
+“3. В примечании укажите ВАШ КОД\n4. Добавьте трек в бота”, parse_mode=“Markdown”)
+elif q.data == “inst_1688”:
+await q.edit_message_text(
+“📦 *1688:*\n\n1. Найдите товар, свяжитесь с продавцом\n2. Укажите адрес склада\n”
+“3. В примечании укажите ВАШ КОД\n4. Добавьте трек в бота”, parse_mode=“Markdown”)
 
 def main():
-    app = Application.builder().token(BOT_TOKEN).build()
+app = Application.builder().token(TOKEN).build()
+track_conv = ConversationHandler(
+entry_points=[MessageHandler(filters.Regex(”^✅ Добавить трек$”), add_track_start)],
+states={WAITING_TRACK: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_track_receive)]},
+fallbacks=[CommandHandler(“cancel”, cancel)],
+)
+app.add_handler(CommandHandler(“start”, start))
+app.add_handler(track_conv)
+app.add_handler(MessageHandler(filters.Regex(”^👤 Профиль$”), profile))
+app.add_handler(MessageHandler(filters.Regex(”^📍 Адреса$”), addresses))
+app.add_handler(MessageHandler(filters.Regex(”^📦 Мои посылки$”), my_parcels))
+app.add_handler(MessageHandler(filters.Regex(”^📖 Инструкция$”), instruction))
+app.add_handler(MessageHandler(filters.Regex(”^🚫 Запрещённое$”), forbidden))
+app.add_handler(MessageHandler(filters.Regex(”^⚙️ Поддержка$”), support))
+app.add_handler(CallbackQueryHandler(callback_handler))
+logger.info(“Zero Cargo312 бот запущен!”)
+app.run_polling(drop_pending_updates=True)
 
-    conv = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("✅ Добавить трек"), track_start)],
-        states={
-            WAITING_TRACK: [MessageHandler(filters.TEXT, track_process)]
-        },
-        fallbacks=[MessageHandler(filters.Regex("⬅️ Отмена"), back)],
-    )
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(conv)
-
-    app.add_handler(MessageHandler(filters.Regex("👤 Профиль"), profile))
-    app.add_handler(MessageHandler(filters.Regex("📋 Адреса"), addresses))
-    app.add_handler(MessageHandler(filters.Regex("📦 Мои посылки"), my_packages))
-    app.add_handler(MessageHandler(filters.Regex("🚛 В пути"), in_transit))
-    app.add_handler(MessageHandler(filters.Regex("✅ В офисе"), in_office))
-    app.add_handler(MessageHandler(filters.Regex("📕 Инструкция"), instruction))
-    app.add_handler(MessageHandler(filters.Regex("🚫 Запрещённые"), forbidden))
-    app.add_handler(MessageHandler(filters.Regex("⚙️ Поддержка"), support))
-
-    app.add_handler(MessageHandler(filters.Regex("⬅️ Назад|⬅️ Отмена"), back))
-
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown))
-
-    print("Бот запущен!")
-    app.run_polling(drop_pending_updates=True)
-
-if __name__ == "__main__":
-    main()
+if **name** == “**main**”:
+main()
