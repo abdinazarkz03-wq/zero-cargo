@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BOT_TOKEN = os.getenv('BOT_TOKEN', 'ваш_токен_бота')
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/zero_cargo')
+# Токен бота и база данных
+BOT_TOKEN = os.getenv('BOT_TOKEN', '8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU')
+DATABASE_URL = os.getenv('DATABASE_URL')
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
 
 # Данные компании
