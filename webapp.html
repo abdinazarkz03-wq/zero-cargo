@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZERO CARGO | Личный кабинет</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .app {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 70px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .menu-btn, .back-btn, .add-btn {
+            font-size: 24px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 15px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .user-code {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .dashboard {
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px 5px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .china-address-card {
+            background: #fff3e0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #ffe0b2;
+        }
+
+        .china-address-card h3 {
+            color: #e65100;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .address-content {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .address-content p {
+            margin-bottom: 5px;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 15px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #388e3c;
+        }
+
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .quick-link {
+            text-decoration: none;
+            color: #333;
+            background: #f8f9fa;
+            padding: 15px 5px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .quick-link .icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #e0e0e0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            text-decoration: none;
+            color: #999;
+            text-align: center;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            z-index: 1000;
+            transition: right 0.3s ease;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .side-menu.active {
+            right: 0;
+        }
+
+        .menu-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .menu-items {
+            padding: 20px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            text-decoration: none;
+            color: #333;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.3s;
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background: #f5f5f5;
+        }
+
+        .menu-item.highlight {
+            background: #e8f5e8;
+            color: #4caf50;
+            border-radius: 12px;
+            margin-top: 10px;
+        }
+
+        .menu-icon {
+            font-size: 20px;
+            margin-right: 15px;
+            width: 24px;
+        }
+
+        .profile-container {
+            padding: 20px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+
+        .avatar-icon {
+            font-size: 30px;
+        }
+
+        .profile-title h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .profile-title p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-card h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            flex: 1;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-value {
+            flex: 2;
+            font-weight: 500;
+        }
+
+        .copy-small {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .location-btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            margin-top: 15px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .whatsapp-btn, .instagram-btn {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+
+        .whatsapp-btn {
+            background: #25D366;
+            color: white;
+        }
+
+        .instagram-btn {
+            background: linear-gradient(45deg, #f09433, #d62976, #962fbf, #4f5bd5);
+            color: white;
+        }
+
+        .language-selector {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .parcels-tabs {
+            display: flex;
+            padding: 15px;
+            gap: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .parcels-list {
+            padding: 15px;
+        }
+
+        .parcel-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .parcel-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .parcel-track {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .parcel-status {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #e0e0e0;
+        }
+
+        .status-transit {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .status-ready {
+            background: #e8f5e8;
+            color: #4caf50;
+        }
+
+        .status-received {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .parcel-desc {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .parcel-date {
+            color: #999;
+            font-size: 11px;
+        }
+
+        .add-track-section {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .add-track-section h3 {
+            margin-bottom: 5px;
+        }
+
+        .hint {
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .add-track-input {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-track-input input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .add-track-input button {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .add-track-btn {
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- ШАПКА (общая для всех страниц) -->
+        <div class="header">
+            <div class="header-top">
+                <button class="back-btn" id="backBtn" onclick="goBack()" style="display: none;">←</button>
+                <h1 id="pageTitle">ZERO CARGO</h1>
+                <div class="menu-btn" onclick="toggleMenu()">☰</div>
+            </div>
+            <div class="user-info">
+                <span class="user-code" data-user="personal_code">Загрузка...</span>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА 1: ГЛАВНАЯ -->
+        <div id="pageMain" class="page active">
+            <div class="dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="waitingCount">0</div>
+                        <div class="stat-label">В ожидании</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="chinaCount">0</div>
+                        <div class="stat-label">В Китае</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="transitCount">0</div>
+                        <div class="stat-label">В пути</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="readyCount">0</div>
+                        <div class="stat-label">Готовы</div>
+                    </div>
+                </div>
+
+                <div class="china-address-card">
+                    <h3>🇨🇳 Адрес склада в Китае</h3>
+                    <div class="address-content">
+                        <p>收件人：<span data-user="china_code">---</span></p>
+                        <p>电话 ：13545100875</p>
+                        <p>广东省佛山市南海区里广路洲村工业区飞机场13-2号</p>
+                        <p>（TSL КАРГО）<span data-user="china_code">---</span>(Ваш код клиента)</p>
+                    </div>
+                    <button class="copy-btn" onclick="copyChinaAddress()">
+                        📋 Скопировать весь адрес
+                    </button>
+                </div>
+
+                <div class="quick-links">
+                    <a href="https://wa.me/996505600542" target="_blank" class="quick-link">
+                        <span class="icon">📱</span>
+                        <span>WhatsApp</span>
+                    </a>
+                    <a href="https://instagram.com/zero_cargo.312" target="_blank" class="quick-link">
+                        <span class="icon">📷</span>
+                        <span>Instagram</span>
+                    </a>
+                    <a href="#" onclick="showPage('parcels')" class="quick-link">
+                        <span class="icon">📦</span>
+                        <span>Посылки</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА 2: ПРОФИЛЬ -->
+        <div id="pageProfile" class="page">
+            <div class="profile-container">
+                <div class="profile-header">
+                    <div class="avatar">
+                        <span class="avatar-icon">👤</span>
+                    </div>
+                    <div class="profile-title">
+                        <h2 data-user="full_name">Загрузка...</h2>
+                        <p data-user="personal_code">---</p>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>Персональные данные</h3>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Персональный КОД:</span>
+                        <span class="info-value" data-user="personal_code">---</span>
+                        <button class="copy-small" onclick="copyField('personal_code')">📋</button>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Код для Китая:</span>
+                        <span class="info-value" data-user="china_code">---</span>
+                        <button class="copy-small" onclick="copyField('china_code')">📋</button>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">ФИО:</span>
+                        <span class="info-value" data-user="full_name">---</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Номер:</span>
+                        <span class="info-value" data-user="phone">---</span>
+                        <button class="copy-small" onclick="copyField('phone')">📋</button>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Адрес:</span>
+                        <span class="info-value" data-user="address">---</span>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <h3>Пункт выдачи</h3>
+                    
+                    <div class="info-row">
+                        <span class="info-label">ПВЗ:</span>
+                        <span class="info-value">ж/м Рухий Мурас, Бишкек</span>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Телефон:</span>
+                        <span class="info-value" id="pvzPhone">0505600542</span>
+                        <button class="copy-small" onclick="copyField('pvz_phone')">📋</button>
+                    </div>
+                    
+                    <div class="info-row">
+                        <span class="info-label">Часы работы:</span>
+                        <span class="info-value">пн-сб 11:00-20:00</span>
+                    </div>
+                    
+                    <a href="https://2gis.kg/bishkek/search/Рухий%20Мурас" target="_blank" class="location-btn">
+                        <span class="icon">🗺️</span>
+                        Локация на карте
+                    </a>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="https://wa.me/996505600542" target="_blank" class="whatsapp-btn">
+                        <span class="icon">📱</span>
+                        WhatsApp менеджера
+                    </a>
+                    <a href="https://instagram.com/zero_cargo.312" target="_blank" class="instagram-btn">
+                        <span class="icon">📷</span>
+                        Наш Instagram
+                    </a>
+                </div>
+
+                <div class="language-selector">
+                    <span>🇷🇺 Русский</span>
+                    <span>🇰🇬 Кыргызча</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА 3: ПОСЫЛКИ -->
+        <div id="pageParcels" class="page">
+            <div class="parcels-tabs">
+                <button class="tab active" onclick="filterParcels('all')">Все</button>
+                <button class="tab" onclick="filterParcels('transit')">В пути</button>
+                <button class="tab" onclick="filterParcels('ready')">Готовы</button>
+            </div>
+
+            <div class="parcels-list" id="parcelsList">
+                <!-- Посылки загружаются через JavaScript -->
+            </div>
+
+            <div class="add-track-section">
+                <h3>Добавить трек-код</h3>
+                <p class="hint">Можно разделить через запятую</p>
+                <div class="add-track-input">
+                    <input type="text" id="trackInput" placeholder="YT1111, 67899876 куртка">
+                    <button onclick="submitTracks()">Добавить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- БОКОВОЕ МЕНЮ -->
+        <div class="side-menu" id="sideMenu">
+            <div class="menu-header">
+                <h3>Меню</h3>
+                <button class="close-btn" onclick="toggleMenu()">✕</button>
+            </div>
+            <div class="menu-items">
+                <div class="menu-item" onclick="showPage('main'); toggleMenu()">
+                    <span class="menu-icon">🏠</span>
+                    <span>Главная</span>
+                </div>
+                <div class="menu-item" onclick="showPage('profile'); toggleMenu()">
+                    <span class="menu-icon">👤</span>
+                    <span>Профиль</span>
+                </div>
+                <div class="menu-item" onclick="showPage('addresses'); toggleMenu()">
+                    <span class="menu-icon">📍</span>
+                    <span>Адреса</span>
+                </div>
+                <div class="menu-item" onclick="showPage('parcels'); toggleMenu()">
+                    <span class="menu-icon">📦</span>
+                    <span>Мои посылки</span>
+                </div>
+                <div class="menu-item" onclick="showPage('instructions'); toggleMenu()">
+                    <span class="menu-icon">📋</span>
+                    <span>Инструкция</span>
+                </div>
+                <div class="menu-item" onclick="showPage('prohibited'); toggleMenu()">
+                    <span class="menu-icon">⛔</span>
+                    <span>Запрещенные товары</span>
+                </div>
+                <div class="menu-item" onclick="showPage('support'); toggleMenu()">
+                    <span class="menu-icon">💬</span>
+                    <span>Поддержка</span>
+                </div>
+                <div class="menu-item highlight" onclick="showPage('addTrack'); toggleMenu()">
+                    <span class="menu-icon">➕</span>
+                    <span>Добавить трек</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- НИЖНЕЕ МЕНЮ -->
+        <div class="bottom-nav">
+            <div class="nav-item" onclick="showPage('main')">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Главная</span>
+            </div>
+            <div class="nav-item" onclick="showPage('parcels')">
+                <span class="nav-icon">📦</span>
+                <span class="nav-label">Посылки</span>
+            </div>
+            <div class="nav-item" onclick="showPage('profile')">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">Профиль</span>
+            </div>
+            <div class="nav-item" onclick="toggleMenu()">
+                <span class="nav-icon">☰</span>
+                <span class="nav-label">Меню</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        let userData = {
+            id: null,
+            full_name: '',
+            phone: '',
+            address: '',
+            personal_code: '',
+            china_code: '',
+            parcels: []
+        };
+
+        // Загрузка данных
+        document.addEventListener('DOMContentLoaded', function() {
+            tg.sendData(JSON.stringify({ 
+                action: 'getUserData',
+                initData: tg.initData 
+            }));
+            showLoading();
+        });
+
+        // Получение данных от бота
+        tg.onEvent('message', function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'userData') {
+                    userData = data.data;
+                    updateUI();
+                    hideLoading();
+                }
+            } catch (e) {
+                console.error('Ошибка парсинга данных:', e);
+            }
+        });
+
+        // Обновление интерфейса
+        function updateUI() {
+            document.querySelectorAll('[data-user="full_name"]').forEach(el => {
+                el.textContent = userData.full_name || 'Не указано';
+            });
+            
+            document.querySelectorAll('[data-user="personal_code"]').forEach(el => {
+                el.textContent = userData.personal_code || '---';
+            });
+            
+            document.querySelectorAll('[data-user="china_code"]').forEach(el => {
+                el.textContent = userData.china_code || '---';
+            });
+            
+            document.querySelectorAll('[data-user="phone"]').forEach(el => {
+                el.textContent = userData.phone || '---';
+            });
+            
+            document.querySelectorAll('[data-user="address"]').forEach(el => {
+                el.textContent = userData.address || 'Не указан';
+            });
+            
+            document.querySelectorAll('.profile-title h2').forEach(el => {
+                el.textContent = userData.full_name || 'Клиент';
+            });
+            
+            document.querySelectorAll('.profile-title p').forEach(el => {
+                el.textContent = userData.personal_code || '---';
+            });
+            
+            updateParcelsStats();
+            displayParcels(userData.parcels || []);
+        }
+
+        // Обновление статистики посылок
+        function updateParcelsStats() {
+            const parcels = userData.parcels || [];
+            
+            const stats = {
+                waiting: parcels.filter(p => p.status === 'В ожидании').length,
+                china: parcels.filter(p => p.status === 'На складе в Китае').length,
+                transit: parcels.filter(p => p.status === 'В пути').length,
+                ready: parcels.filter(p => p.status === 'Готов к выдаче').length
+            };
+            
+            const waitingEl = document.getElementById('waitingCount');
+            const chinaEl = document.getElementById('chinaCount');
+            const transitEl = document.getElementById('transitCount');
+            const readyEl = document.getElementById('readyCount');
+            
+            if (waitingEl) waitingEl.textContent = stats.waiting;
+            if (chinaEl) chinaEl.textContent = stats.china;
+            if (transitEl) transitEl.textContent = stats.transit;
+            if (readyEl) readyEl.textContent = stats.ready;
+        }
+
+        // Копирование адреса Китая
+        function copyChinaAddress() {
+            const chinaCode = userData.china_code || 'XXX';
+            
+            const address = `收件人：${chinaCode}
+电话 ：13545100875
+广东省佛山市南海区里广路洲村工业区飞机场13-2号
+（TSL КАРГО）${chinaCode}(Ваш код клиента)`;
+            
+            navigator.clipboard.writeText(address).then(() => {
+                tg.showPopup({
+                    title: '✅ Скопировано',
+                    message: 'Адрес склада в Китае скопирован',
+                    buttons: [{type: 'ok'}]
+                });
+            });
+        }
+
+        // Копирование поля
+        function copyField(fieldName) {
+            let text = '';
+            
+            switch(fieldName) {
+                case 'personal_code':
+                    text = userData.personal_code || '';
+                    break;
+                case 'china_code':
+                    text = userData.china_code || '';
+                    break;
+                case 'phone':
+                    text = userData.phone || '';
+                    break;
+                case 'pvz_phone':
+                    text = '0505600542';
+                    break;
+                default:
+                    text = '';
+            }
+            
+            navigator.clipboard.writeText(text).then(() => {
+                tg.showPopup({
+                    title: '✅ Скопировано',
+                    message: 'Текст скопирован в буфер обмена',
+                    buttons: [{type: 'ok'}]
+                });
+            });
+        }
+
+        // Фильтрация посылок
+        function filterParcels(filter) {
+            const parcels = userData.parcels || [];
+            let filtered = [];
+            
+            switch(filter) {
+                case 'all':
+                    filtered = parcels;
+                    break;
+                case 'transit':
+                    filtered = parcels.filter(p => p.status === 'В пути');
+                    break;
+                case 'ready':
+                    filtered = parcels.filter(p => p.status === 'Готов к выдаче');
+                    break;
+                default:
+                    filtered = parcels;
+            }
+            
+            displayParcels(filtered);
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // Отображение посылок
+        function displayParcels(parcels) {
+            const list = document.getElementById('parcelsList');
+            if (!list) return;
+            
+            if (!parcels || parcels.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <span class="empty-icon">📭</span>
+                        <p>У вас пока нет посылок</p>
+                        <button class="add-track-btn" onclick="showPage('addTrack')">➕ Добавить трек</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = parcels.map(p => {
+                let statusClass = '';
+                let statusText = p.status || 'В ожидании';
+                
+                switch(p.status) {
+                    case 'В пути':
+                        statusClass = 'status-transit';
+                        break;
+                    case 'Готов к выдаче':
+                        statusClass = 'status-ready';
+                        break;
+                    case 'Получено':
+                        statusClass = 'status-received';
+                        break;
+                    default:
+                        statusClass = 'status-waiting';
+                }
+                
+                return `
+                    <div class="parcel-item">
+                        <div class="parcel-header">
+                            <span class="parcel-track">${p.track_code || p.track}</span>
+                            <span class="parcel-status ${statusClass}">${statusText}</span>
+                        </div>
+                        ${p.description ? `<div class="parcel-desc">📝 ${p.description}</div>` : ''}
+                        <div class="parcel-date">📅 ${new Date(p.created_at).toLocaleDateString('ru-RU')}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Отправка трек-кодов
+        function submitTracks() {
+            const input = document.getElementById('trackInput');
+            if (!input || !input.value.trim()) {
+                tg.showPopup({
+                    title: '⚠️ Внимание',
+                    message: 'Введите трек-код',
+                    buttons: [{type: 'ok'}]
+                });
+                return;
+            }
+            
+            const tracks = input.value.split(',').map(t => t.trim());
+            
+            tg.sendData(JSON.stringify({
+                action: 'addTracks',
+                tracks: tracks
+            }));
+            
+            tg.showPopup({
+                title: '✅ Отправлено',
+                message: `Трек-коды отправлены на обработку`,
+                buttons: [{type: 'ok'}]
+            });
+            
+            input.value = '';
+        }
+
+        // Навигация по страницам
+        function showPage(pageName) {
+            // Скрываем все страницы
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Показываем выбранную страницу
+            if (pageName === 'main') {
+                document.getElementById('pageMain').classList.add('active');
+                document.getElementById('pageTitle').textContent = 'ZERO CARGO';
+                document.getElementById('backBtn').style.display = 'none';
+            } else if (pageName === 'profile') {
+                document.getElementById('pageProfile').classList.add('active');
+                document.getElementById('pageTitle').textContent = 'Профиль';
+                document.getElementById('backBtn').style.display = 'block';
+            } else if (pageName === 'parcels') {
+                document.getElementById('pageParcels').classList.add('active');
+                document.getElementById('pageTitle').textContent = 'Мои посылки';
+                document.getElementById('backBtn').style.display = 'block';
+            }
+            
+            // Обновляем активный пункт нижнего меню
+            document.querySelectorAll('.nav-item').forEach((item, index) => {
+                item.classList.remove('active');
+            });
+            
+            if (pageName === 'main') {
+                document.querySelectorAll('.nav-item')[0].classList.add('active');
+            } else if (pageName === 'parcels') {
+                document.querySelectorAll('.nav-item')[1].classList.add('active');
+            } else if (pageName === 'profile') {
+                document.querySelectorAll('.nav-item')[2].classList.add('active');
+            }
+        }
+
+        // Кнопка "Назад"
+        function goBack() {
+            showPage('main');
+        }
+
+        // Переключение бокового меню
+        function toggleMenu() {
+            const menu = document.getElementById('sideMenu');
+            menu.classList.toggle('active');
+        }
+
+        // Показать загрузку
+        function showLoading() {
+            const loader = document.createElement('div');
+            loader.id = 'loader';
+            loader.className = 'loader';
+            loader.innerHTML = '<div class="spinner"></div><p>Загрузка данных...</p>';
+            document.body.appendChild(loader);
+        }
+
+        // Скрыть загрузку
+        function hideLoading() {
+            const loader = document.getElementById('loader');
+            if (loader) {
+                loader.remove();
+            }
+        }
+
+        // Закрытие меню при клике вне его
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('sideMenu');
+            const menuBtn = document.querySelector('.menu-btn');
+            
+            if (menu && menuBtn && !menu.contains(event.target) && !menuBtn.contains(event.target) && menu.classList.contains('active')) {
+                menu.classList.remove('active');
+            }
+        });
+
+        // Экспорт функций
+        window.showPage = showPage;
+        window.goBack = goBack;
+        window.toggleMenu = toggleMenu;
+        window.copyChinaAddress = copyChinaAddress;
+        window.copyField = copyField;
+        window.filterParcels = filterParcels;
+        window.submitTracks = submitTracks;
+    </script>
+</body>
+</html>
