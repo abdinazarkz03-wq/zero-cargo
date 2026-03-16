@@ -1,0 +1,22 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
+from database import db
+from config import ADMIN_IDS
+
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMIN_IDS:
+        return
+    
+    keyboard = [
+        [InlineKeyboardButton("📋 Все клиенты", callback_data="admin_list")],
+        [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton("🔍 Поиск", callback_data="admin_search")],
+        [InlineKeyboardButton("📦 Все посылки", callback_data="admin_parcels")],
+        [InlineKeyboardButton("📝 Изменить статус", callback_data="admin_change_status")]
+    ]
+    
+    await update.message.reply_text(
+        "👑 **Панель управления ZERO CARGO**",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
