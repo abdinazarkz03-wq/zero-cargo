@@ -6,21 +6,127 @@
 <title>ZERO CARGO | Личный кабинет</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* ======== Стили (оставлены ваши) ======== */
+/* ===== Общие стили ===== */
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
 body{background:#f5f5f5;color:#333}
 .app{max-width:480px;margin:0 auto;background:white;min-height:100vh;position:relative;padding-bottom:70px}
+
+/* ===== Шапка ===== */
 .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:20px;position:sticky;top:0;z-index:10}
 .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .header h1{font-size:24px;font-weight:600}
 .menu-btn,.back-btn,.add-btn{font-size:24px;cursor:pointer;background:none;border:none;color:white;padding:5px 10px}
 .user-info{background:rgba(255,255,255,.2);padding:10px 15px;border-radius:12px;font-size:14px}
 .user-code{font-weight:600;font-size:16px}
-/* ===== Остальные стили оставлены как есть ===== */
+
+/* ===== Страницы ===== */
+.page{display:none;padding:15px}
+.page.active{display:block}
+
+/* ===== Статистика ===== */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:15px}
+.stat-card{background:#f0f0f0;padding:15px;border-radius:12px;text-align:center}
+.stat-value{font-weight:600;font-size:20px}
+.stat-label{font-size:14px;color:#666}
+
+/* ===== Адрес в Китае ===== */
+.china-address-card{background:#fff3f3;padding:15px;border-radius:12px;margin-bottom:15px}
+.address-content p{margin-bottom:5px}
+.copy-btn{background:#667eea;color:white;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+
+/* ===== Быстрые ссылки ===== */
+.quick-links{display:flex;justify-content:space-between}
+.quick-link{display:flex;flex-direction:column;align-items:center;text-decoration:none;color:#333;font-size:14px;padding:10px;background:#f0f0f0;border-radius:12px;width:30%;text-align:center}
+
+/* ===== Посылки ===== */
+.parcels-tabs{display:flex;gap:5px;margin-bottom:10px}
+.tab{flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;cursor:pointer}
+.tab.active{background:#667eea;color:white}
+.parcels-list{margin-bottom:15px}
+.parcel-item{background:#f8f8f8;padding:10px;border-radius:8px;margin-bottom:8px}
+.parcel-header{display:flex;justify-content:space-between;margin-bottom:5px}
+.parcel-status{padding:2px 6px;border-radius:6px;color:white;font-size:12px}
+.status-waiting{background:#999}
+.status-transit{background:#f39c12}
+.status-ready{background:#2ecc71}
+.status-received{background:#3498db}
+.parcel-desc{font-size:14px;color:#555;margin-bottom:5px}
+.parcel-date{font-size:12px;color:#888}
+
+/* ===== Лоадер ===== */
+.loader{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.2);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:50}
+.spinner{width:40px;height:40px;border:4px solid #ccc;border-top:4px solid #667eea;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:10px}
+@keyframes spin{100%{transform:rotate(360deg)}}
+
+/* ===== Боковое меню ===== */
+.side-menu{
+    position: fixed;
+    top: 0;
+    left: -250px;
+    width: 250px;
+    height: 100%;
+    background: #667eea;
+    color: white;
+    transition: 0.3s;
+    z-index: 20;
+    padding-top: 60px;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+}
+.side-menu.active{left:0}
+.side-menu .menu-header{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #764ba2;
+}
+.side-menu .menu-header h3{margin:0;font-size:18px}
+.side-menu .menu-header button{
+    background:none;
+    border:none;
+    font-size:20px;
+    color:white;
+    cursor:pointer;
+}
+.side-menu .menu-list{list-style:none;padding:0}
+.side-menu .menu-list li a{
+    display:block;
+    padding:12px 20px;
+    color:white;
+    text-decoration:none;
+    font-size:16px;
+}
+.side-menu .menu-list li a:hover{background: rgba(255,255,255,0.2)}
+
+/* ===== Нижнее меню ===== */
+.bottom-menu{
+    position: fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:60px;
+    background:white;
+    border-top:1px solid #ccc;
+    display:flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index:10;
+}
+.bottom-menu button{
+    background:none;
+    border:none;
+    font-size:24px;
+    cursor:pointer;
+}
 </style>
 </head>
 <body>
 <div class="app">
+
     <!-- Шапка -->
     <div class="header">
         <div class="header-top">
@@ -33,7 +139,7 @@ body{background:#f5f5f5;color:#333}
         </div>
     </div>
 
-    <!-- Страницы -->
+    <!-- ===== Главная страница ===== -->
     <div id="pageMain" class="page active">
         <div class="dashboard">
             <div class="stats-grid">
@@ -62,12 +168,14 @@ body{background:#f5f5f5;color:#333}
         </div>
     </div>
 
+    <!-- ===== Профиль ===== -->
     <div id="pageProfile" class="page">
         <div class="profile-container">
-            <!-- ваш профиль остался без изменений -->
+            <p>Здесь будет информация о профиле</p>
         </div>
     </div>
 
+    <!-- ===== Посылки ===== -->
     <div id="pageParcels" class="page">
         <div class="parcels-tabs">
             <button class="tab active" onclick="filterParcels('all', event)">Все</button>
@@ -75,124 +183,126 @@ body{background:#f5f5f5;color:#333}
             <button class="tab" onclick="filterParcels('ready', event)">Готовы</button>
         </div>
         <div class="parcels-list" id="parcelsList"></div>
-        <div class="add-track-section">
-            <h3>Добавить трек-код</h3>
-            <p class="hint">Можно разделить через запятую</p>
-            <div class="add-track-input">
-                <input type="text" id="trackInput" placeholder="YT1111, 67899876 куртка">
-                <button onclick="submitTracks()">Добавить</button>
-            </div>
-        </div>
     </div>
 
-    <!-- Боковое меню и нижнее меню оставлены без изменений -->
+    <!-- ===== Боковое меню ===== -->
+    <div id="sideMenu" class="side-menu">
+        <div class="menu-header">
+            <h3>Меню</h3>
+            <button onclick="toggleMenu()">✖</button>
+        </div>
+        <ul class="menu-list">
+            <li><a href="#" onclick="showPage('main'); toggleMenu()">🏠 Главная</a></li>
+            <li><a href="#" onclick="showPage('profile'); toggleMenu()">👤 Профиль</a></li>
+            <li><a href="#" onclick="showPage('parcels'); toggleMenu()">📦 Посылки</a></li>
+            <li><a href="#" onclick="showPage('addresses'); toggleMenu()">📍 Адреса</a></li>
+            <li><a href="#" onclick="showPage('instructions'); toggleMenu()">📖 Инструкция</a></li>
+            <li><a href="#" onclick="showPage('prohibited'); toggleMenu()">🚫 Запрещенные товары</a></li>
+            <li><a href="#" onclick="showPage('support'); toggleMenu()">🛠 Поддержка</a></li>
+        </ul>
+    </div>
+
+    <!-- ===== Нижнее меню ===== -->
+    <div class="bottom-menu">
+        <button onclick="showPage('main')">🏠</button>
+        <button onclick="showPage('parcels')">📦</button>
+        <button onclick="showPage('profile')">👤</button>
+        <button onclick="showPage('support')">🛠</button>
+    </div>
+
 </div>
 
 <script>
-// Telegram WebApp и данные пользователя
-let tg = window.Telegram.WebApp;
-tg.expand(); tg.ready();
+// ===== Telegram WebApp =====
+const tg = window.Telegram.WebApp;
+tg.expand();
 
-let userData = {id:null,full_name:'',phone:'',address:'',personal_code:'',china_code:'',parcels:[]};
+// ===== Данные пользователя =====
+let userData = {
+    id: null, full_name:'', phone:'', address:'', personal_code:'', china_code:'', parcels:[]
+};
 
-// Загрузка данных
-document.addEventListener('DOMContentLoaded',function(){
-    tg.sendData(JSON.stringify({action:'getUserData',initData:tg.initData||''}));
+// ===== Загрузка данных =====
+document.addEventListener('DOMContentLoaded', () => {
     showLoading();
+    tg.sendData(JSON.stringify({action:'getUserData',initData:tg.initData||''}));
     setTimeout(()=>{hideLoading();},10000);
 });
 
-// Получение сообщений
-Telegram.WebApp.onEvent('message', function(event){
+// ===== Подписка на события Telegram =====
+tg.onEvent('message', (event) => {
     try {
-        let data = (typeof event==='string') ? JSON.parse(event) : event.data ? JSON.parse(event.data) : event;
-        if(data.type==='userData'){userData=data.data;updateUI();hideLoading();}
+        const data = typeof event==='string'?JSON.parse(event):event.data?JSON.parse(event.data):event;
+        if(data.type==='userData'){userData=data.data; updateUI(); hideLoading();}
         else if(data.type==='error'){hideLoading(); tg.showPopup({title:'❌ Ошибка',message:data.message||'Не удалось загрузить данные',buttons:[{type:'ok'}]});}
     } catch(e){console.error(e);}
 });
 
-// Обновление UI
+// ===== Обновление UI =====
 function updateUI(){
     document.querySelectorAll('[data-user="full_name"]').forEach(el=>el.textContent=userData.full_name||'Не указано');
     document.querySelectorAll('[data-user="personal_code"]').forEach(el=>el.textContent=userData.personal_code||'---');
     document.querySelectorAll('[data-user="china_code"]').forEach(el=>el.textContent=userData.china_code||'---');
     document.querySelectorAll('[data-user="phone"]').forEach(el=>el.textContent=userData.phone||'---');
     document.querySelectorAll('[data-user="address"]').forEach(el=>el.textContent=userData.address||'Не указан');
-    updateParcelsStats(); displayParcels(userData.parcels||[]);
+    updateParcelsStats();
+    displayParcels(userData.parcels||[]);
 }
 
+// ===== Статистика посылок =====
 function updateParcelsStats(){
     const parcels=userData.parcels||[];
     const stats={waiting:parcels.filter(p=>p.status==='В ожидании'||p.status==='pending').length,
                  china:parcels.filter(p=>p.status==='На складе в Китае'||p.status==='in_china').length,
                  transit:parcels.filter(p=>p.status==='В пути'||p.status==='transit').length,
                  ready:parcels.filter(p=>p.status==='Готов к выдаче'||p.status==='ready').length};
-    ['waitingCount','chinaCount','transitCount','readyCount'].forEach((id,i)=>document.getElementById(id).textContent=Object.values(stats)[i]);
+    document.getElementById('waitingCount').textContent=stats.waiting;
+    document.getElementById('chinaCount').textContent=stats.china;
+    document.getElementById('transitCount').textContent=stats.transit;
+    document.getElementById('readyCount').textContent=stats.ready;
 }
 
-// Копирование
-function copyChinaAddress(){navigator.clipboard.writeText(`收件人：${userData.china_code}\n电话 ：13545100875\n广东省佛山市南海区里广路洲村工业区飞机场13-2号\n（TSL КАРГО）${userData.china_code}(Ваш код клиента)`).then(()=>tg.showPopup({title:'✅ Скопировано',message:'Адрес склада в Китае скопирован',buttons:[{type:'ok'}]}));}
-function copyField(field){let text='';switch(field){case'personal_code':text=userData.personal_code||'';break;case'china_code':text=userData.china_code||'';break;case'phone':text=userData.phone||'';break;case'pvz_phone':text='0505600542';break;}navigator.clipboard.writeText(text).then(()=>tg.showPopup({title:'✅ Скопировано',message:'Текст скопирован в буфер обмена',buttons:[{type:'ok'}]}));}
+// ===== Копирование =====
+function copyChinaAddress(){navigator.clipboard.writeText(`收件人：${userData.china_code}\n电话 ：13545100875\n广东省佛山市南海区里广路洲村工业区飞机场13-2号\n（TSL КАРГО）${userData.china_code}(Ваш код клиента)`).then(()=>tg.showPopup({title:'✅ Скопировано',message:'Адрес скопирован',buttons:[{type:'ok'}]}));}
 
-// Навигация
+// ===== Навигация =====
 function showPage(pageName){
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-    const title=document.getElementById('pageTitle');
-    const backBtn=document.getElementById('backBtn');
+    const title=document.getElementById('pageTitle'); const backBtn=document.getElementById('backBtn');
     switch(pageName){
-        case'main':document.getElementById('pageMain').classList.add('active'); title.textContent='ZERO CARGO'; backBtn.style.display='none';break;
-        case'profile':document.getElementById('pageProfile').classList.add('active'); title.textContent='Профиль'; backBtn.style.display='block';break;
-        case'parcels':document.getElementById('pageParcels').classList.add('active'); title.textContent='Посылки'; backBtn.style.display='block';break;
-        case'addresses':title.textContent='Адреса'; backBtn.style.display='block';break;
-        case'instructions':title.textContent='Инструкция'; backBtn.style.display='block';break;
-        case'prohibited':title.textContent='Запрещенные товары'; backBtn.style.display='block';break;
-        case'support':title.textContent='Поддержка'; backBtn.style.display='block';break;
-        case'addTrack':title.textContent='Добавить трек'; backBtn.style.display='block';break;
+        case'main':document.getElementById('pageMain').classList.add('active'); title.textContent='ZERO CARGO'; backBtn.style.display='none'; break;
+        case'profile':document.getElementById('pageProfile').classList.add('active'); title.textContent='Профиль'; backBtn.style.display='block'; break;
+        case'parcels':document.getElementById('pageParcels').classList.add('active'); title.textContent='Посылки'; backBtn.style.display='block'; break;
         default:document.getElementById('pageMain').classList.add('active'); title.textContent='ZERO CARGO'; backBtn.style.display='none';
     }
 }
-
 function goBack(){showPage('main');}
 
-// Фильтрация посылок
+// ===== Фильтрация и отображение посылок =====
 function filterParcels(filter,event){
-    const parcels=userData.parcels||[];
-    let filtered=[];
+    const parcels=userData.parcels||[]; let filtered=[];
     switch(filter){case'all':filtered=parcels;break;case'transit':filtered=parcels.filter(p=>p.status==='В пути'||p.status==='transit');break;case'ready':filtered=parcels.filter(p=>p.status==='Готов к выдаче'||p.status==='ready');break;default:filtered=parcels;}
     displayParcels(filtered);
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    if(event && event.target) event.target.classList.add('active');
+    if(event&&event.target)event.target.classList.add('active');
 }
-
-// Отображение посылок
 function displayParcels(parcels){
-    const list=document.getElementById('parcelsList');
-    if(!list) return;
-    if(!parcels||parcels.length===0){list.innerHTML=`<div class="empty-state"><span class="empty-icon">📭</span><p>У вас пока нет посылок</p><button class="add-track-btn" onclick="showPage('addTrack')">➕ Добавить трек</button></div>`;return;}
-    list.innerHTML=parcels.map(p=>{let statusClass='',statusText=p.status||'В ожидании';switch(p.status){case'В пути':case'transit':statusClass='status-transit';statusText='В пути';break;case'Готов к выдаче':case'ready':statusClass='status-ready';statusText='Готов к выдаче';break;case'Получено':case'received':statusClass='status-received';statusText='Получено';break;default:statusClass='status-waiting';statusText='В ожидании';}return`<div class="parcel-item"><div class="parcel-header"><span class="parcel-track">${p.track_code||p.track}</span><span class="parcel-status ${statusClass}">${statusText}</span></div>${p.description?`<div class="parcel-desc">📝 ${p.description}</div>`:''}<div class="parcel-date">📅 ${p.created_at?new Date(p.created_at).toLocaleDateString('ru-RU'):''}</div></div>`;}).join('');
+    const list=document.getElementById('parcelsList'); if(!list)return;
+    if(!parcels||parcels.length===0){list.innerHTML=`<div class="empty-state"><span class="empty-icon">📭</span><p>У вас пока нет посылок</p></div>`;return;}
+    list.innerHTML=parcels.map(p=>{let statusClass='',statusText=p.status||'В ожидании';
+        switch(p.status){case'В пути':case'transit':statusClass='status-transit';statusText='В пути';break;
+            case'Готов к выдаче':case'ready':statusClass='status-ready';statusText='Готов к выдаче';break;
+            case'Получено':case'received':statusClass='status-received';statusText='Получено';break;
+            default:statusClass='status-waiting';statusText='В ожидании';}
+        return `<div class="parcel-item"><div class="parcel-header"><span class="parcel-track">${p.track_code||p.track}</span><span class="parcel-status ${statusClass}">${statusText}</span></div>${p.description?`<div class="parcel-desc">📝 ${p.description}</div>`:''}<div class="parcel-date">📅 ${p.created_at?new Date(p.created_at).toLocaleDateString('ru-RU'):''}</div></div>`;}).join('');
 }
 
-// Отправка трек-кодов
-function submitTracks(){
-    const input=document.getElementById('trackInput');
-    if(!input||!input.value.trim()){tg.showPopup({title:'⚠️ Внимание',message:'Введите трек-код',buttons:[{type:'ok'}]});return;}
-    const tracks=input.value.split(',').map(t=>t.trim());
-    tg.sendData(JSON.stringify({action:'addTracks',tracks:tracks}));
-    tg.showPopup({title:'✅ Отправлено',message:`Трек-коды отправлены на обработку`,buttons:[{type:'ok'}]});
-    input.value='';
-}
+// ===== Боковое меню =====
+function toggleMenu(){const menu=document.getElementById('sideMenu');if(menu)menu.classList.toggle('active');}
 
-// Боковое меню
-function toggleMenu(){document.getElementById('sideMenu').classList.toggle('active');}
-
-// Загрузка / лоадер
-function showLoading(){
-    if(!document.getElementById('loader')){
-        const loader=document.createElement('div'); loader.id='loader'; loader.className='loader';
-        loader.innerHTML='<div class="spinner"></div><div>Загрузка...</div>'; document.body.appendChild(loader);
-    }
-}
-function hideLoading(){const loader=document.getElementById('loader'); if(loader) loader.remove();}
+// ===== Лоадер =====
+function showLoading(){if(!document.getElementById('loader')){const loader=document.createElement('div'); loader.id='loader'; loader.className='loader'; loader.innerHTML='<div class="spinner"></div><div>Загрузка...</div>'; document.body.appendChild(loader);}}
+function hideLoading(){const loader=document.getElementById('loader'); if(loader)loader.remove();}
 </script>
 </body>
-</html>
+</
