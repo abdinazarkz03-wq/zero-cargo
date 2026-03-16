@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BOT_TOKEN = os.getenv('BOT_TOKEN', 'ВАШ_ТОКЕН_ЗДЕСЬ')
+BOT_TOKEN = os.getenv('BOT_TOKEN', 'ваш_токен_бота')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/zero_cargo')
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
 
@@ -15,9 +15,11 @@ COMPANY_INSTAGRAM = "@zero_cargo.312"
 COMPANY_INSTAGRAM_LINK = "https://instagram.com/zero_cargo.312"
 COMPANY_WHATSAPP_LINK = "https://wa.me/996505600542"
 
-# ПВЗ
+# Пункт выдачи
 PICKUP_ADDRESS = "ж/м Рухий Мурас, Бишкек"
+PICKUP_CITY = "Бишкек"
 PICKUP_PHONE = "0505600542"
+PICKUP_PHONE_FULL = "+996505600542"
 PICKUP_HOURS = "пн-сб 11:00-20:00"
 PICKUP_MAP_LINK = "https://2gis.kg/bishkek/search/Рухий%20Мурас"
 
