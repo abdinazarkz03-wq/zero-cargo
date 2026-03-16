@@ -13,16 +13,36 @@
             parcels: []
         };
 
-        // Загрузка данных
+        // Загрузка данных - ИСПРАВЛЕНО
         document.addEventListener('DOMContentLoaded', function() {
             console.log('WebApp загружен, отправляем запрос данных...');
+            
+            // Получаем данные инициализации от Telegram
+            const initData = tg.initData || '';
+            console.log('InitData длина:', initData.length);
+            
+            // Отправляем запрос с initData
             tg.sendData(JSON.stringify({ 
-                action: 'getUserData'
+                action: 'getUserData',
+                initData: initData
             }));
+            
             showLoading();
+            
+            // Таймаут на случай если бот не отвечает
+            setTimeout(function() {
+                if (document.getElementById('loader')) {
+                    hideLoading();
+                    tg.showPopup({
+                        title: '⚠️ Таймаут',
+                        message: 'Бот не отвечает. Проверьте подключение.',
+                        buttons: [{type: 'ok'}]
+                    });
+                }
+            }, 10000);
         });
 
-        // Получение данных от бота - ИСПРАВЛЕНО!
+        // Получение данных от бота
         Telegram.WebApp.onEvent('message', function(event) {
             console.log('Получено сообщение от бота:', event);
             try {
@@ -55,11 +75,6 @@
                 console.error('Ошибка парсинга данных:', e, event);
                 hideLoading();
             }
-        });
-
-        // Также добавим обработчик для ошибок
-        Telegram.WebApp.onEvent('popupClosed', function() {
-            console.log('Popup закрыт');
         });
 
         // Обновление интерфейса
@@ -307,6 +322,11 @@
                 document.getElementById('pageParcels').classList.add('active');
                 document.getElementById('pageTitle').textContent = 'Мои посылки';
                 document.getElementById('backBtn').style.display = 'block';
+            } else {
+                // Если страница не найдена, показываем главную
+                document.getElementById('pageMain').classList.add('active');
+                document.getElementById('pageTitle').textContent = 'ZERO CARGO';
+                document.getElementById('backBtn').style.display = 'none';
             }
             
             // Обновляем активный пункт нижнего меню
@@ -320,6 +340,8 @@
                 document.querySelectorAll('.nav-item')[1].classList.add('active');
             } else if (pageName === 'profile') {
                 document.querySelectorAll('.nav-item')[2].classList.add('active');
+            } else {
+                document.querySelectorAll('.nav-item')[0].classList.add('active');
             }
         }
 
