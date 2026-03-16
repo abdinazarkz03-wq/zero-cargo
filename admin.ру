@@ -1,22 +1,36 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from database import db
 from config import ADMIN_IDS
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Проверка прав администратора
     if update.effective_user.id not in ADMIN_IDS:
         return
-    
+
+    # Кнопки панели администратора в две колонки
     keyboard = [
-        [InlineKeyboardButton("📋 Все клиенты", callback_data="admin_list")],
-        [InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")],
-        [InlineKeyboardButton("🔍 Поиск", callback_data="admin_search")],
-        [InlineKeyboardButton("📦 Все посылки", callback_data="admin_parcels")],
-        [InlineKeyboardButton("📝 Изменить статус", callback_data="admin_change_status")]
+        [
+            InlineKeyboardButton("📋 Все клиенты", callback_data="admin_list"),
+            InlineKeyboardButton("📊 Статистика", callback_data="admin_stats")
+        ],
+        [
+            InlineKeyboardButton("🔍 Поиск", callback_data="admin_search"),
+            InlineKeyboardButton("📦 Все посылки", callback_data="admin_parcels")
+        ],
+        [
+            InlineKeyboardButton("📝 Изменить статус", callback_data="admin_change_status")
+        ]
     ]
-    
+
+    # Текст сообщения с заголовком и подзаголовком
+    text = (
+        "👑 *Панель управления ZERO CARGO*\n"
+        "_Выберите действие для управления ботом и клиентами_"
+    )
+
+    # Отправка сообщения
     await update.message.reply_text(
-        "👑 **Панель управления ZERO CARGO**",
+        text,
         reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='Markdown'
+        parse_mode='MarkdownV2'
     )
