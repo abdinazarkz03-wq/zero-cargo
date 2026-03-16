@@ -1,345 +1,106 @@
 import logging
 import json
-import asyncio
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, filters, ContextTypes, ConversationHandler
+    MessageHandler, filters, ContextTypes
 )
-
-from config import *
+from config import BOT_TOKEN, ADMIN_IDS, PICKUP_ADDRESS, PICKUP_PHONE, PICKUP_HOURS, PICKUP_MAP_LINK, COMPANY_WHATSAPP_LINK, COMPANY_INSTAGRAM_LINK
 from database import db
 
-
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
-
 logger = logging.getLogger(__name__)
 
-
-# СОСТОЯНИЯ
-FULL_NAME, PHONE, ADDRESS, TRACK_CODE = range(4)
-
-
-# =========================
-# МЕНЮ
-# =========================
-
+# === Главное меню ===
 async def get_main_menu():
-
     keyboard = [
-        [InlineKeyboardButton(
-            "🚪 Открыть личный кабинет",
-            web_app=WebAppInfo(url=WEBAPP_URL)
-        )],
-        [InlineKeyboardButton("👤 Профиль", callback_data="profile")],
-        [InlineKeyboardButton("📍 Адреса", callback_data="addresses")],
-        [InlineKeyboardButton("📦 Мои посылки", callback_data="my_parcels")],
-        [InlineKeyboardButton("➕ Добавить трек", callback_data="add_track")],
-        [InlineKeyboardButton("💬 Поддержка", callback_data="support")]
+        [
+            InlineKeyboardButton(
+                "🏠 Личный кабинет",
+                web_app=WebAppInfo(url="https://abdinazarkz03-wq.github.io/zero-cargo/")
+            )
+        ],
+        [InlineKeyboardButton("💬 Поддержка", url=COMPANY_WHATSAPP_LINK)]
     ]
-
     return InlineKeyboardMarkup(keyboard)
 
-
-# =========================
-# СТАРТ
-# =========================
-
+# === Старт ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     user_id = update.effective_user.id
     user = await db.get_user(user_id)
 
     if user:
-        await show_main_menu(update, user)
-        return
-
-    text = (
-        "🌟 **ZERO CARGO**\n\n"
-        "Доставка из Китая в Бишкек\n\n"
-        "Пройдите регистрацию чтобы получить персональный код"
-    )
-
-    keyboard = [
-        [InlineKeyboardButton("📝 Регистрация", callback_data="register")]
-    ]
-
-    await update.message.reply_text(
-        text,
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-
-# =========================
-# ГЛАВНОЕ МЕНЮ
-# =========================
-
-async def show_main_menu(update: Update, user):
-
-    text = (
-        f"👤 **Ваш профиль**\n\n"
-        f"Код клиента: `{user['personal_code']}`\n"
-        f"Код Китая: `{user['china_code']}`\n"
-        f"ФИО: {user['full_name']}\n"
-        f"Телефон: +{user['phone']}\n"
-    )
-
-    if update.message:
-
         await update.message.reply_text(
-            text,
-            parse_mode="Markdown",
+            f"Привет, {user['full_name']}! 👋",
             reply_markup=await get_main_menu()
         )
-
     else:
-
-        await update.callback_query.edit_message_text(
-            text,
-            parse_mode="Markdown",
-            reply_markup=await get_main_menu()
-        )
-
-
-# =========================
-# РЕГИСТРАЦИЯ
-# =========================
-
-async def register_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    await update.callback_query.answer()
-
-    await update.callback_query.edit_message_text(
-        "Введите ваше ФИО:"
-    )
-
-    return FULL_NAME
-
-
-async def get_full_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    context.user_data["full_name"] = update.message.text
-
-    await update.message.reply_text(
-        "Введите номер телефона\n\nПример: 996704560821"
-    )
-
-    return PHONE
-
-
-async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    phone = update.message.text.replace("+", "").replace(" ", "")
-
-    if not phone.isdigit():
-
+        keyboard = [
+            [InlineKeyboardButton("📝 Пройти регистрацию", callback_data="register")],
+        ]
         await update.message.reply_text(
-            "Введите номер только цифрами"
+            "Добро пожаловать в ZERO CARGO!\nПройдите регистрацию для получения персонального кода.",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-        return PHONE
-
-    context.user_data["phone"] = phone
-
-    await update.message.reply_text(
-        "Введите адрес проживания"
-    )
-
-    return ADDRESS
-
-
-async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    user = await db.register_user(
-        update.effective_user.id,
-        context.user_data["full_name"],
-        context.user_data["phone"],
-        update.message.text
-    )
-
-    await show_main_menu(update, user)
-
-    return ConversationHandler.END
-
-
-# =========================
-# КНОПКИ
-# =========================
-
+# === Обработка callback-кнопок ===
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     query = update.callback_query
     await query.answer()
+    user_id = query.from_user.id
+    user = await db.get_user(user_id)
 
-    user = await db.get_user(query.from_user.id)
+    if query.data == "register":
+        await query.edit_message_text("📝 Введите ваше ФИО:")
+        return "FULL_NAME"
 
-    if query.data == "profile":
-
-        text = (
-            f"👤 **Ваш профиль**\n\n"
-            f"Код: `{user['personal_code']}`\n"
-            f"ФИО: {user['full_name']}\n"
-            f"Телефон: +{user['phone']}"
-        )
-
-        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back")]]
-
-        await query.edit_message_text(
-            text,
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-
-    elif query.data == "addresses":
-
-        text = (
-            "🇨🇳 **Адрес склада в Китае**\n\n"
-            f"收件人：{user['china_code']}\n"
-            f"电话 ：{CHINA_PHONE_NUMBER}\n"
-            f"{CHINA_ADDRESS}"
-        )
-
-        keyboard = [[InlineKeyboardButton("◀️ Назад", callback_data="back")]]
-
-        await query.edit_message_text(
-            text,
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-
-    elif query.data == "my_parcels":
-
-        parcels = await db.get_user_parcels(query.from_user.id)
-
-        if not parcels:
-            text = "📭 У вас пока нет посылок"
-
-        else:
-
-            text = "📦 **Мои посылки**\n\n"
-
-            for p in parcels:
-
-                text += f"• `{p['track_code']}` — {p['status']}\n"
-
-        keyboard = [
-            [InlineKeyboardButton("➕ Добавить трек", callback_data="add_track")],
-            [InlineKeyboardButton("◀️ Назад", callback_data="back")]
-        ]
-
-        await query.edit_message_text(
-            text,
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-
-    elif query.data == "add_track":
-
-        await query.edit_message_text(
-            "Отправьте трек код\n\nМожно несколько через запятую"
-        )
-
-        return TRACK_CODE
-
-
-    elif query.data == "back":
-
-        await show_main_menu(update, user)
-
-
-# =========================
-# ДОБАВЛЕНИЕ ТРЕКА
-# =========================
-
-async def handle_track(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    tracks = [t.strip() for t in update.message.text.split(",")]
-
-    added = 0
-
-    for track in tracks:
-
-        if await db.add_parcel(update.effective_user.id, track):
-
-            added += 1
-
-    await update.message.reply_text(
-        f"Добавлено посылок: {added}",
-        reply_markup=await get_main_menu()
-    )
-
-    return ConversationHandler.END
-
-
-# =========================
-# WEBAPP
-# =========================
-
+# === Обработка данных из WebApp ===
 async def webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        data = json.loads(update.effective_message.web_app_data.data)
+        user_id = update.effective_user.id
 
-    data = json.loads(update.effective_message.web_app_data.data)
+        if data.get('action') == 'getUserData':
+            user_data = await db.get_user_with_parcels(user_id)
+            if user_data:
+                await update.effective_message.reply_text(
+                    json.dumps({
+                        'type': 'userData',
+                        'data': user_data
+                    }, default=str)
+                )
+            else:
+                await update.effective_message.reply_text(
+                    json.dumps({'type': 'error', 'message': 'Пользователь не найден.'})
+                )
+        elif data.get('action') == 'addTracks':
+            tracks = data.get('tracks', [])
+            added = 0
+            for track in tracks:
+                if await db.add_parcel(user_id, track):
+                    added += 1
+            await update.effective_message.reply_text(f"✅ Добавлено посылок: {added}")
+    except Exception as e:
+        logger.error(f"Ошибка WebApp: {e}")
+        await update.effective_message.reply_text(
+            json.dumps({'type': 'error', 'message': 'Произошла ошибка'})
+        )
 
-    user = await db.get_user_with_parcels(update.effective_user.id)
-
-    await update.effective_message.reply_text(
-        json.dumps({
-            "type": "userData",
-            "data": user
-        }, default=str)
-    )
-
-
-# =========================
-# ЗАПУСК
-# =========================
-
+# === Основная функция ===
 async def main():
-
     await db.connect()
-
     app = Application.builder().token(BOT_TOKEN).build()
 
-    reg_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(register_start, pattern="register")],
-        states={
-            FULL_NAME: [MessageHandler(filters.TEXT, get_full_name)],
-            PHONE: [MessageHandler(filters.TEXT, get_phone)],
-            ADDRESS: [MessageHandler(filters.TEXT, get_address)],
-        },
-        fallbacks=[]
-    )
-
-    track_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(handle_callback, pattern="add_track")],
-        states={
-            TRACK_CODE: [MessageHandler(filters.TEXT, handle_track)]
-        },
-        fallbacks=[]
-    )
-
     app.add_handler(CommandHandler("start", start))
-
-    app.add_handler(reg_conv)
-    app.add_handler(track_conv)
-
     app.add_handler(CallbackQueryHandler(handle_callback))
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data))
 
-    app.add_handler(
-        MessageHandler(filters.StatusUpdate.WEB_APP_DATA, webapp_data)
-    )
-
-    logger.info("ZERO CARGO бот запущен")
-
+    logger.info("🚀 ZERO CARGO бот запущен!")
     await app.run_polling()
 
-
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
