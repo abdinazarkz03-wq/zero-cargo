@@ -6,11 +6,9 @@ from datetime import datetime
 import qrcode
 from io import BytesIO
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Добавляем путь к текущей папке для импорта database
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import Database
 
@@ -18,8 +16,6 @@ app = Flask(__name__)
 db = Database()
 
 ADMIN_ID = int(os.getenv("ADMIN_ID", "1053328646"))
-
-# ================= HTML ШАБЛОНЫ =================
 
 REGISTER_HTML = """<!DOCTYPE html>
 <html>
@@ -91,7 +87,6 @@ async function register() {
             messageEl.className = "success";
             messageEl.innerText = "✅ Регистрация успешна! Ваш код: " + data.code;
             
-            // Показываем QR-код
             qrContainer.style.display = "block";
             const qrImg = document.createElement("img");
             qrImg.src = "/api/qrcode/" + data.code;
@@ -180,15 +175,10 @@ async function loadParcels() {
     }
 }
 
-// Загружаем при открытии
 loadParcels();
-
-// Автообновление каждые 30 секунд
 setInterval(loadParcels, 30000);
 </script>
 </body></html>"""
-
-# ================= ROUTES =================
 
 @app.route("/")
 def index():
@@ -208,7 +198,6 @@ def parcels_page():
 
 @app.route("/api/qrcode/<client_code>")
 def generate_qrcode(client_code):
-    """Генерация QR-кода с кодом клиента"""
     img = qrcode.make(f"ZERO-CARGO:{client_code}")
     img_io = BytesIO()
     img.save(img_io, 'PNG')
@@ -229,7 +218,6 @@ def api_register():
         if not telegram_id or not full_name or not phone:
             return jsonify({"success": False, "error": "Заполните все поля"})
         
-        # Проверяем, существует ли уже
         existing = db.get_user(int(telegram_id))
         if existing:
             return jsonify({
@@ -238,7 +226,6 @@ def api_register():
                 "already": True
             })
         
-        # Регистрируем
         code = db.register_user(int(telegram_id), full_name, phone)
         
         if code:
@@ -259,7 +246,6 @@ def api_user():
     try:
         user = db.get_user(int(telegram_id))
         if user:
-            # Возвращаем нужные поля
             return jsonify({
                 "found": True,
                 "client_code": user["client_code"],
@@ -284,8 +270,6 @@ def api_parcels():
         logger.error(f"Error getting parcels: {e}")
         return jsonify({"parcels": [], "error": str(e)})
 
-# ================= ADMIN =================
-
 @app.route("/api/admin/add_parcel", methods=["POST"])
 def add_parcel():
     try:
@@ -293,7 +277,6 @@ def add_parcel():
         if not data:
             return jsonify({"success": False, "error": "Нет данных"})
         
-        # Проверка админа
         if str(data.get("admin_id")) != str(ADMIN_ID):
             return jsonify({"success": False, "error": "Нет доступа"})
         
@@ -307,7 +290,6 @@ def add_parcel():
         if not client_code or not track_number:
             return jsonify({"success": False, "error": "client_code и track_number обязательны"})
         
-        # Проверяем существование клиента
         user = db.get_user_by_code(client_code)
         if not user:
             return jsonify({"success": False, "error": "Клиент не найден"})
@@ -322,22 +304,17 @@ def add_parcel():
 
 @app.route("/api/admin/users", methods=["GET"])
 def admin_users():
-    """Список всех пользователей (только для админа)"""
     admin_id = request.args.get("admin_id")
-    
     if str(admin_id) != str(ADMIN_ID):
         return jsonify({"success": False, "error": "Нет доступа"})
     
     try:
         users = db.get_all_users()
-        # Убираем чувствительные данные
         for user in users:
             user.pop("id", None)
         return jsonify({"success": True, "users": users})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
-
-# ================= ERROR HANDLERS =================
 
 @app.errorhandler(404)
 def not_found(e):
@@ -346,8 +323,6 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return jsonify({"error": "Internal server error"}), 500
-
-# ================= ЗАПУСК =================
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
