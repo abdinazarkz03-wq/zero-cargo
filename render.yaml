@@ -2,11 +2,16 @@ services:
   - type: web
     name: zerocargo-webapp
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn webapp:app --bind 0.0.0.0:$PORT
+    region: frankfurt  # или singapore, если ближе к Китаю
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: gunicorn webapp:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    healthCheckPath: /health
     envVars:
       - key: BOT_TOKEN
-        sync: false
+        sync: false  # будет запрошен при деплое
       - key: ADMIN_ID
         value: "1053328646"
       - key: WEBAPP_URL
@@ -15,7 +20,11 @@ services:
   - type: worker
     name: zerocargo-bot
     env: python
-    buildCommand: pip install -r requirements.txt
+    region: frankfurt
+    plan: free
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
     startCommand: python -u bot.py
     envVars:
       - key: BOT_TOKEN
