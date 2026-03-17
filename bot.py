@@ -13,10 +13,11 @@ ADMIN_ID = int(os.getenv("ADMIN_ID", "1053328646"))
 
 def get_user(telegram_id):
     try:
-        r = requests.get(f"{WEBAPP_URL}/api/user?telegram_id={telegram_id}", timeout=5)
+        r = requests.get(f"{WEBAPP_URL}/api/user?telegram_id={telegram_id}", timeout=10)
         d = r.json()
         return d if d.get("found") else None
-    except:
+    except Exception as e:
+        logger.error(f"get_user error: {e}")
         return None
 
 def get_lang(user):
@@ -219,8 +220,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text
     user = get_user(user_id)
-    lang = get_lang(user)
-    t = TEXTS[lang]
     ru = TEXTS["ru"]
     kg = TEXTS["kg"]
 
@@ -284,9 +283,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     lang = "ru" if query.data == "lang_ru" else "kg"
     try:
-        requests.post(f"{WEBAPP_URL}/api/update-language", json={"telegram_id": user_id, "language": lang}, timeout=5)
-    except:
-        pass
+        requests.post(f"{WEBAPP_URL}/api/update-language",
+                      json={"telegram_id": user_id, "language": lang}, timeout=5)
+    except Exception as e:
+        logger.error(f"update lang error: {e}")
     msg = "✅ Язык изменён на Русский" if lang == "ru" else "✅ Тил кыргызчага өзгөртүлдү"
     await query.edit_message_text(msg)
     user = get_user(user_id)
