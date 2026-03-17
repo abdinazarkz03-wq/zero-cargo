@@ -1,33 +1,100 @@
-import asyncpg
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import config
 
-class DB:
-    def __init__(self):
-        self.pool = None
+def get_connection():
+    """Подключение к базе данных"""
+    return psycopg2.connect(config.DATABASE_URL)
 
-    async def connect(self):
-        from config import DATABASE_URL
-        self.pool = await asyncpg.create_pool(DATABASE_URL)
+def init_db():
+    """Создание таблиц при первом запуске"""
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    # Таблица пользователей
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT UNIQUE NOT NULL,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    
+    # Таблица сообщений
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT REFERENCES users(user_id) ON DELETE CASCADE,
+            message_text TEXT,
+            chat_id BIGINT,
+            sent_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    print("✅ База данных готова")
 
-    async def get_user(self, user_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT * FROM users WHERE user_id=$1", user_id)
-            return dict(row) if row else None
+def add_user(user_id, username, first_name=None, last_name=None):
+    """Добавить или обновить пользователя"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO users (user_id, username, first_name, last_name)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+                username = EXCLUDED.username,
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name
+        """, (user_id, username, first_name, last_name))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Ошибка добавления пользователя: {e}")
+        conn.rollback()
+        return False
+    finally:
+        cur.close()
+        conn.close()
 
-    async def register_user(self, user_id, full_name, phone, address):
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                "INSERT INTO users(user_id, full_name, phone, address, personal_code, china_code) VALUES($1,$2,$3,$4,$5,$6) "
-                "ON CONFLICT (user_id) DO NOTHING",
-                user_id, full_name, phone, address, f"C{user_id}", "VXMMM"
-            )
-            return await self.get_user(user_id)
+def log_message(user_id, message_text, chat_id):
+    """Сохранить сообщение в историю"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO messages (user_id, message_text, chat_id)
+            VALUES (%s, %s, %s)
+        """, (user_id, message_text, chat_id))
+        conn.commit()
+    except Exception as e:
+        print(f"❌ Ошибка сохранения сообщения: {e}")
+        conn.rollback()
+    finally:
+        cur.close()
+        conn.close()
 
-    async def add_parcel(self, user_id, track_code):
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                "INSERT INTO parcels(user_id, track_code, status) VALUES($1,$2,'В ожидании')",
-                user_id, track_code
-            )
-            return True
+def get_user_stats():
+    """Получить статистику пользователей"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute("""
+        SELECT 
+            COUNT(*) as total_users,
+            COUNT(DISTINCT user_id) as unique_users,
+            DATE(MIN(created_at)) as first_user_date
+        FROM users
+    """)
+    stats = cur.fetchone()
+    cur.close()
+    conn.close()
+    return stats
 
-db = DB()
+# Инициализация при импорте
+init_db()
