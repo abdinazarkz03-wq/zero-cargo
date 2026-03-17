@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template_string
 import os
 import sys
+import threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import Database
 
@@ -317,7 +318,6 @@ ADMIN_HTML = """<!DOCTYPE html>
 <script>
 const ADMIN_ID = {{ admin_id }};
 let allUsers = [], allParcels = [];
-
 async function loadStats() {
   const r = await fetch('/api/admin/stats?admin_id=' + ADMIN_ID);
   const d = await r.json();
@@ -475,6 +475,12 @@ def admin_delete_parcel():
     db.delete_parcel(data["id"])
     return jsonify({"success": True})
 
+def run_bot():
+    from bot import main
+    main()
+
 if __name__ == "__main__":
+    t = threading.Thread(target=run_bot, daemon=True)
+    t.start()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
