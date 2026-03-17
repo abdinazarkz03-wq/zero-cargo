@@ -20,7 +20,6 @@ class Database:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            # Таблица пользователей
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +35,6 @@ class Database:
                 )
             ''')
             
-            # Таблица посылок
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS parcels (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +51,6 @@ class Database:
                 )
             ''')
             
-            # Индексы для быстрого поиска
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_client_code ON users(client_code)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_parcels_client_code ON parcels(client_code)')
@@ -100,7 +97,6 @@ class Database:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
             
-            # Проверяем, существует ли уже
             existing = conn.execute(
                 "SELECT client_code FROM users WHERE telegram_id = ?",
                 (telegram_id,)
@@ -109,7 +105,6 @@ class Database:
                 conn.close()
                 return existing['client_code']
             
-            # Генерируем код
             client_code = self._generate_client_code()
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
