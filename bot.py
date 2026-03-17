@@ -17,12 +17,8 @@ from telegram.ext import (
     ContextTypes
 )
 
-# ================= НАСТРОЙКИ =================
-
-TOKEN = os.getenv("BOT_TOKEN")  # Вставьте токен через переменные окружения
+TOKEN = os.getenv("BOT_TOKEN")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://zerocargo-webapp.onrender.com")
-
-# ================= ЛОГИ =================
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -30,10 +26,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ================= API ФУНКЦИИ =================
-
 def get_user(telegram_id):
-    """Получение данных пользователя из API"""
     try:
         response = requests.get(
             f"{WEBAPP_URL}/api/user",
@@ -48,10 +41,7 @@ def get_user(telegram_id):
         logger.error(f"API error getting user {telegram_id}: {e}")
         return None
 
-# ================= КНОПКИ =================
-
 def get_main_keyboard(registered=False):
-    """Создание основной клавиатуры"""
     if not registered:
         keyboard = [[KeyboardButton("📝 Регистрация")]]
     else:
@@ -62,10 +52,7 @@ def get_main_keyboard(registered=False):
         ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-# ================= КОМАНДА START =================
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /start"""
     user_id = update.effective_user.id
     first_name = update.effective_user.first_name
     
@@ -86,10 +73,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         await update.message.reply_text(text, reply_markup=get_main_keyboard(False))
 
-# ================= ОБРАБОТЧИК ТЕКСТОВЫХ СООБЩЕНИЙ =================
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка нажатий на кнопки"""
     text = update.message.text
     user_id = update.effective_user.id
     user = get_user(user_id)
@@ -102,7 +86,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Кнопка для открытия WebApp регистрации
         url = f"{WEBAPP_URL}/register?user_id={user_id}"
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("📝 Открыть регистрацию", web_app=WebAppInfo(url=url))
@@ -200,21 +183,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(contacts, parse_mode='Markdown')
     
     else:
-        # Если пользователь отправил что-то другое - показываем меню
         await start(update, context)
 
-# ================= ЗАПУСК =================
-
 def main():
-    """Запуск бота"""
     if not TOKEN:
         logger.error("Не задан BOT_TOKEN! Установите переменную окружения.")
         return
     
-    # Создаем приложение
     app = Application.builder().token(TOKEN).build()
-    
-    # Добавляем обработчики
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
