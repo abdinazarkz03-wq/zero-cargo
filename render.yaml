@@ -2,16 +2,19 @@ services:
   - type: web
     name: zerocargo-webapp
     env: python
-    region: frankfurt  # или singapore, если ближе к Китаю
+    region: frankfurt
     plan: free
     buildCommand: |
-      pip install --upgrade pip
+      pip install --upgrade pip wheel setuptools
       pip install -r requirements.txt
     startCommand: gunicorn webapp:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     healthCheckPath: /health
+    buildpacks:
+      - url: heroku-community/apt
+      - url: heroku/python
     envVars:
       - key: BOT_TOKEN
-        sync: false  # будет запрошен при деплое
+        sync: false
       - key: ADMIN_ID
         value: "1053328646"
       - key: WEBAPP_URL
@@ -23,9 +26,12 @@ services:
     region: frankfurt
     plan: free
     buildCommand: |
-      pip install --upgrade pip
+      pip install --upgrade pip wheel setuptools
       pip install -r requirements.txt
     startCommand: python -u bot.py
+    buildpacks:
+      - url: heroku-community/apt
+      - url: heroku/python
     envVars:
       - key: BOT_TOKEN
         sync: false
