@@ -194,19 +194,7 @@ const statusIcon = {'В обработке':'⏳','На складе в Кита
 function renderParcel(p) {
   const cls = statusClass[p.status] || 's1';
   const icon = statusIcon[p.status] || '📦';
-  return `<div class="parcel-card">
-    <div class="parcel-header">
-      <span class="track">🏷 ${p.track_number}</span>
-      <span class="status ${cls}">${icon} ${p.status}</span>
-    </div>
-    <div class="parcel-info">
-      ${p.description ? `<div>📝 ${p.description}</div>` : ''}
-      <div class="parcel-row">
-        ${p.weight ? `<span>⚖️ ${p.weight} кг</span>` : '<span></span>'}
-        <span>📅 ${(p.created_at||'').substring(0,10)}</span>
-      </div>
-    </div>
-  </div>`;
+  return `<div class="parcel-card"><div class="parcel-header"><span class="track">🏷 ${p.track_number}</span><span class="status ${cls}">${icon} ${p.status}</span></div><div class="parcel-info">${p.description ? `<div>📝 ${p.description}</div>` : ''}<div class="parcel-row">${p.weight ? `<span>⚖️ ${p.weight} кг</span>` : '<span></span>'}<span>📅 ${(p.created_at||'').substring(0,10)}</span></div></div></div>`;
 }
 async function loadParcels() {
   if (!clientCode) return;
@@ -418,6 +406,23 @@ def api_register():
     if code:
         return jsonify({"success": True, "code": code})
     return jsonify({"success": False, "error": "Ошибка регистрации"})
+
+@app.route("/api/user")
+def api_get_user():
+    tid = request.args.get("telegram_id")
+    if not tid:
+        return jsonify({"found": False})
+    user = db.get_user(int(tid))
+    if user:
+        user["found"] = True
+        return jsonify(user)
+    return jsonify({"found": False})
+
+@app.route("/api/update-language", methods=["POST"])
+def api_update_language():
+    data = request.get_json()
+    db.update_language(int(data["telegram_id"]), data["language"])
+    return jsonify({"success": True})
 
 @app.route("/api/parcels")
 def api_parcels():
