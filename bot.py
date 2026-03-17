@@ -1,8 +1,8 @@
 import logging
 import os
+import requests
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
-from database import Database
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -11,7 +11,19 @@ TOKEN = os.getenv("BOT_TOKEN", "8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://zerocargo-webapp.onrender.com")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "1053328646"))
 
-db = Database()
+def get_user(telegram_id):
+    try:
+        r = requests.get(f"{WEBAPP_URL}/api/user?telegram_id={telegram_id}", timeout=10)
+        d = r.json()
+        return d if d.get("found") else None
+    except Exception as e:
+        logger.error(f"get_user error: {e}")
+        return None
+
+def get_lang(user):
+    if user and user.get("language"):
+        return user["language"]
+    return "ru"
 
 TEXTS = {
     "ru": {
@@ -173,46 +185,41 @@ TEXTS = {
     }
 }
 
-def get_lang(user_id):
-    user = db.get_user(user_id)
-    return user["language"] if user and user.get("language") else "ru"
-
-def t(user_id, key, **kwargs):
-    lang = get_lang(user_id)
+def tx(user, key, **kwargs):
+    lang = get_lang(user)
     text = TEXTS[lang].get(key, TEXTS["ru"].get(key, key))
     return text.format(**kwargs) if kwargs else text
 
-def get_main_keyboard(user_id, registered=True):
-    lang = get_lang(user_id)
-    tx = TEXTS[lang]
+def get_main_keyboard(user, registered=True):
+    lang = get_lang(user)
+    t = TEXTS[lang]
     if not registered:
-        return ReplyKeyboardMarkup([[KeyboardButton(tx["reg_btn"])]], resize_keyboard=True)
+        return ReplyKeyboardMarkup([[KeyboardButton(t["reg_btn"])]], resize_keyboard=True)
     return ReplyKeyboardMarkup([
-        [KeyboardButton(tx["mycode_btn"]), KeyboardButton(tx["parcels_btn"])],
-        [KeyboardButton(tx["address_btn"]), KeyboardButton(tx["instruction_btn"])],
-        [KeyboardButton(tx["profile_btn"]), KeyboardButton(tx["banned_btn"])],
-        [KeyboardButton(tx["support_btn"]), KeyboardButton(tx["lang_btn"])],
+        [KeyboardButton(t["mycode_btn"]), KeyboardButton(t["parcels_btn"])],
+        [KeyboardButton(t["address_btn"]), KeyboardButton(t["instruction_btn"])],
+        [KeyboardButton(t["profile_btn"]), KeyboardButton(t["banned_btn"])],
+        [KeyboardButton(t["support_btn"]), KeyboardButton(t["lang_btn"])],
     ], resize_keyboard=True)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user = db.get_user(user_id)
+    user = get_user(user_id)
     if user:
         await update.message.reply_text(
-            t(user_id, "welcome_back", name=user["full_name"], code=user["client_code"]),
-            parse_mode="HTML", reply_markup=get_main_keyboard(user_id)
+            tx(user, "welcome_back", name=user["full_name"], code=user["client_code"]),
+            parse_mode="HTML", reply_markup=get_main_keyboard(user)
         )
     else:
         await update.message.reply_text(
-            t(user_id, "welcome_new"), parse_mode="HTML",
-            reply_markup=get_main_keyboard(user_id, registered=False)
+            tx(None, "welcome_new"), parse_mode="HTML",
+            reply_markup=get_main_keyboard(None, registered=False)
         )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text
-    lang = get_lang(user_id)
-    tx = TEXTS[lang]
+    user = get_user(user_id)
     ru = TEXTS["ru"]
     kg = TEXTS["kg"]
 
@@ -222,47 +229,45 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Нажмите кнопку ниже для регистрации:", reply_markup=keyboard)
         return
 
-    user = db.get_user(user_id)
-
     if text in [ru["mycode_btn"], kg["mycode_btn"]]:
         if not user:
-            await update.message.reply_text(t(user_id, "not_registered"))
+            await update.message.reply_text(tx(user, "not_registered"))
             return
         await update.message.reply_text(
-            t(user_id, "mycode_text", code=user["client_code"], name=user["full_name"], phone=user["phone"]),
+            tx(user, "mycode_text", code=user["client_code"], name=user["full_name"], phone=user["phone"]),
             parse_mode="HTML"
         )
     elif text in [ru["parcels_btn"], kg["parcels_btn"]]:
         if not user:
-            await update.message.reply_text(t(user_id, "not_registered"))
+            await update.message.reply_text(tx(user, "not_registered"))
             return
         webapp_url = f"{WEBAPP_URL}/parcels?user_id={user_id}&code={user['client_code']}"
-        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(t(user_id, "open_parcels_btn"), web_app=WebAppInfo(url=webapp_url))]])
-        await update.message.reply_text(t(user_id, "parcels_open"), reply_markup=keyboard, parse_mode="HTML")
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton(tx(user, "open_parcels_btn"), web_app=WebAppInfo(url=webapp_url))]])
+        await update.message.reply_text(tx(user, "parcels_open"), reply_markup=keyboard, parse_mode="HTML")
     elif text in [ru["address_btn"], kg["address_btn"]]:
         if not user:
-            await update.message.reply_text(t(user_id, "not_registered"))
+            await update.message.reply_text(tx(user, "not_registered"))
             return
-        await update.message.reply_text(t(user_id, "address_text", code=user["client_code"]), parse_mode="HTML")
+        await update.message.reply_text(tx(user, "address_text", code=user["client_code"]), parse_mode="HTML")
     elif text in [ru["instruction_btn"], kg["instruction_btn"]]:
-        await update.message.reply_text(t(user_id, "instruction_text"), parse_mode="HTML")
+        await update.message.reply_text(tx(user, "instruction_text"), parse_mode="HTML")
     elif text in [ru["profile_btn"], kg["profile_btn"]]:
         if not user:
-            await update.message.reply_text(t(user_id, "not_registered"))
+            await update.message.reply_text(tx(user, "not_registered"))
             return
         await update.message.reply_text(
-            t(user_id, "profile_text", code=user["client_code"], name=user["full_name"],
-              phone=user["phone"], date=user.get("created_at", "—")[:10]),
+            tx(user, "profile_text", code=user["client_code"], name=user["full_name"],
+               phone=user["phone"], date=user.get("created_at", "—")[:10]),
             parse_mode="HTML"
         )
     elif text in [ru["banned_btn"], kg["banned_btn"]]:
-        await update.message.reply_text(t(user_id, "banned_text"), parse_mode="HTML")
+        await update.message.reply_text(tx(user, "banned_text"), parse_mode="HTML")
     elif text in [ru["support_btn"], kg["support_btn"]]:
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("💚 Написать в WhatsApp", url="https://wa.me/996505600542")],
             [InlineKeyboardButton("📱 Написать в Telegram", url="https://t.me/zero_cargo312")],
         ])
-        await update.message.reply_text(t(user_id, "support_text"), reply_markup=keyboard, parse_mode="HTML")
+        await update.message.reply_text(tx(user, "support_text"), reply_markup=keyboard, parse_mode="HTML")
     elif text in [ru["lang_btn"], kg["lang_btn"]]:
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
@@ -276,18 +281,20 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
-    if query.data == "lang_ru":
-        db.update_language(user_id, "ru")
-        await query.edit_message_text("✅ Язык изменён на Русский")
-    elif query.data == "lang_kg":
-        db.update_language(user_id, "kg")
-        await query.edit_message_text("✅ Тил кыргызчага өзгөртүлдү")
-    user = db.get_user(user_id)
+    lang = "ru" if query.data == "lang_ru" else "kg"
+    try:
+        requests.post(f"{WEBAPP_URL}/api/update-language",
+                      json={"telegram_id": user_id, "language": lang}, timeout=5)
+    except Exception as e:
+        logger.error(f"update lang error: {e}")
+    msg = "✅ Язык изменён на Русский" if lang == "ru" else "✅ Тил кыргызчага өзгөртүлдү"
+    await query.edit_message_text(msg)
+    user = get_user(user_id)
     if user:
         await context.bot.send_message(
             user_id,
-            t(user_id, "welcome_back", name=user["full_name"], code=user["client_code"]),
-            parse_mode="HTML", reply_markup=get_main_keyboard(user_id)
+            tx(user, "welcome_back", name=user["full_name"], code=user["client_code"]),
+            parse_mode="HTML", reply_markup=get_main_keyboard(user)
         )
 
 def main():
