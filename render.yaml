@@ -6,7 +6,7 @@ services:
     startCommand: gunicorn webapp:app --bind 0.0.0.0:$PORT
     envVars:
       - key: BOT_TOKEN
-        value: 8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU
+        sync: false
       - key: ADMIN_ID
         value: "1053328646"
       - key: WEBAPP_URL
@@ -16,10 +16,10 @@ services:
     name: zerocargo-bot
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
+    startCommand: python -u bot.py
     envVars:
       - key: BOT_TOKEN
-        value: 8676654212:AAFtmReTMfPUrBMkVGSqc2XTUoBhmiwMmaU
+        sync: false
       - key: ADMIN_ID
         value: "1053328646"
       - key: WEBAPP_URL
