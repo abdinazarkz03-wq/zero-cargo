@@ -9,7 +9,7 @@ class Database:
         self.init_db()
 
     def get_conn(self):
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -26,7 +26,6 @@ class Database:
                 language TEXT DEFAULT 'ru',
                 created_at TEXT NOT NULL
             );
-
             CREATE TABLE IF NOT EXISTS parcels (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -88,22 +87,10 @@ class Database:
         conn.close()
         return [dict(r) for r in rows]
 
-    def get_parcels_by_code(self, client_code):
-        conn = self.get_conn()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM parcels WHERE client_code = ? ORDER BY created_at DESC", (client_code,))
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
-
     def get_all_parcels(self):
         conn = self.get_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT p.*, u.full_name, u.phone, u.telegram_id 
-            FROM parcels p LEFT JOIN users u ON p.user_id = u.id 
-            ORDER BY p.created_at DESC
-        """)
+        cursor.execute("SELECT p.*, u.full_name, u.phone FROM parcels p LEFT JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC")
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
