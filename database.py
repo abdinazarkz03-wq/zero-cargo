@@ -23,7 +23,6 @@ class Database:
                 full_name TEXT NOT NULL,
                 phone TEXT NOT NULL,
                 client_code TEXT UNIQUE NOT NULL,
-                language TEXT DEFAULT 'ru',
                 created_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS parcels (
