@@ -23,7 +23,6 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 db = Database()
 
-# Храним режим админа: True = режим клиента
 admin_client_mode = set()
 
 
@@ -109,10 +108,23 @@ async def code(message: Message):
 async def addr(message: Message):
     if is_admin(message) and message.from_user.id not in admin_client_mode:
         return
-    await message.answer(
-        "📍 *Склад в Китае:*\n`广东省佛山市南海区里广路洲村工业区飞机场13-2号`",
-        parse_mode="Markdown"
-    )
+    user = db.get_user(message.from_user.id)
+    if user:
+        code = user['client_code']
+        await message.answer(
+            f"📍 *Скопируйте адрес склада:*\n\n"
+            f"`收件人：VXMMM\n"
+            f"电话：13545100875\n"
+            f"广东省佛山市南海区里广路洲村工业区飞机场13-2号\n"
+            f"（TSL КАРГО）VXMMM {code}`\n\n"
+            f"💰 Стоимость доставки: *2.5$ за кг*",
+            parse_mode="Markdown"
+        )
+    else:
+        await message.answer(
+            "❗️ Сначала зарегистрируйтесь чтобы увидеть адрес с вашим кодом!\n"
+            "Нажмите 📝 Регистрация"
+        )
 
 
 @dp.message(F.text == "👤 Профиль")
