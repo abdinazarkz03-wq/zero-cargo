@@ -87,24 +87,14 @@ async function register() {
   const name = document.getElementById('fullname').value.trim();
   const phone = document.getElementById('phone').value.trim();
   let valid = true;
-  
   document.getElementById('name-error').style.display = 'none';
   document.getElementById('phone-error').style.display = 'none';
-  
-  if (!name || name.length < 2) {
-    document.getElementById('name-error').style.display = 'block';
-    valid = false;
-  }
-  if (!phone || phone.length < 7) {
-    document.getElementById('phone-error').style.display = 'block';
-    valid = false;
-  }
+  if (!name || name.length < 2) { document.getElementById('name-error').style.display = 'block'; valid = false; }
+  if (!phone || phone.length < 7) { document.getElementById('phone-error').style.display = 'block'; valid = false; }
   if (!valid) return;
-  
   const user = tg.initDataUnsafe?.user;
   const telegram_id = user?.id || 0;
   const lang = user?.language_code === 'ky' ? 'ky' : 'ru';
-  
   try {
     const resp = await fetch('/api/register', {
       method: 'POST',
@@ -126,9 +116,7 @@ async function register() {
     } else {
       alert(data.error || 'Ошибка регистрации');
     }
-  } catch(e) {
-    alert('Ошибка соединения');
-  }
+  } catch(e) { alert('Ошибка соединения'); }
 }
 </script>
 </body>
@@ -196,20 +184,17 @@ const tg = window.Telegram.WebApp;
 tg.ready(); tg.expand();
 const params = new URLSearchParams(window.location.search);
 const userId = params.get('user_id') || tg.initDataUnsafe?.user?.id || 0;
-
 const statusLabels = {
   pending: '⏳ Ожидается', in_china: '🇨🇳 На складе в Китае',
   in_transit: '✈️ В пути', in_bishkek: '🇰🇬 В Бишкеке',
   ready: '✅ Готово к выдаче', delivered: '📦 Выдано'
 };
-
 function showTab(tab) {
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (tab==='all'&&i===0)||(tab==='search'&&i===1)));
   document.getElementById('search-section').style.display = tab==='search'?'block':'none';
   if(tab==='all') loadParcels();
   else document.getElementById('parcels-list').innerHTML='';
 }
-
 function renderParcels(parcels) {
   const list = document.getElementById('parcels-list');
   if(!parcels.length) {
@@ -230,7 +215,6 @@ function renderParcels(parcels) {
     </div>
   `).join('');
 }
-
 async function loadParcels() {
   try {
     const r = await fetch('/api/parcels?user_id='+userId);
@@ -238,7 +222,6 @@ async function loadParcels() {
     renderParcels(data.parcels || []);
   } catch(e) { document.getElementById('parcels-list').innerHTML='<div class="empty"><p>Ошибка загрузки</p></div>'; }
 }
-
 async function searchParcel() {
   const track = document.getElementById('track-input').value.trim();
   if(!track) return;
@@ -248,7 +231,6 @@ async function searchParcel() {
     renderParcels(data.parcels || []);
   } catch(e) {}
 }
-
 loadParcels();
 </script>
 </body>
@@ -266,9 +248,8 @@ ADMIN_HTML = """
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f0f0; min-height: 100vh; }
-  .header { background: #000; color: white; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+  .header { background: #000; color: white; padding: 16px 20px; }
   .header h1 { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
-  .badge { background: #ff3b30; color: white; border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 700; }
   .tabs { display: flex; background: #eee; border-bottom: 1px solid #ddd; }
   .tab { flex: 1; padding: 14px; text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; border-bottom: 3px solid transparent; }
   .tab.active { border-bottom-color: #000; color: #000; background: white; }
@@ -276,13 +257,11 @@ ADMIN_HTML = """
   .card { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   .card h3 { font-size: 15px; margin-bottom: 12px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px; }
   .form-row { display: flex; flex-direction: column; gap: 10px; }
-  input, select, textarea { padding: 11px 14px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 14px; outline: none; width: 100%; }
+  input, select { padding: 11px 14px; border: 1.5px solid #ddd; border-radius: 10px; font-size: 14px; outline: none; width: 100%; }
   input:focus, select:focus { border-color: #000; }
   .btn { padding: 12px 20px; background: #000; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; }
   .btn-sm { padding: 6px 14px; font-size: 12px; width: auto; border-radius: 8px; }
   .btn-danger { background: #ff3b30; }
-  .btn-success { background: #34c759; }
-  .btn-warning { background: #ff9500; }
   .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
   .stat-box { background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
   .stat-num { font-size: 28px; font-weight: 900; }
@@ -291,17 +270,15 @@ ADMIN_HTML = """
   .row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .row-code { font-weight: 700; font-size: 14px; }
   .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-  .status-select { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+  .status-select { padding: 6px 10px; font-size: 12px; border-radius: 8px; border: 1px solid #ddd; }
   .search-bar { margin-bottom: 12px; }
   .tag { display: inline-block; background: #eee; border-radius: 6px; padding: 2px 8px; font-size: 11px; margin-right: 4px; }
 </style>
 </head>
 <body>
 <div class="header">
-  <div>
-    <div style="font-size:10px;color:#888;letter-spacing:1px">ZERO CARGO</div>
-    <h1>🔧 Админ-панель</h1>
-  </div>
+  <div style="font-size:10px;color:#888;letter-spacing:1px">ZERO CARGO</div>
+  <h1>🔧 Админ-панель</h1>
 </div>
 <div class="tabs">
   <div class="tab active" onclick="showTab('dashboard')">📊 Главная</div>
@@ -309,7 +286,6 @@ ADMIN_HTML = """
   <div class="tab" onclick="showTab('users')">👥 Клиенты</div>
   <div class="tab" onclick="showTab('add')">➕ Добавить</div>
 </div>
-
 <div id="tab-dashboard" class="container">
   <div class="stat-grid" id="stats"></div>
   <div class="card">
@@ -317,21 +293,14 @@ ADMIN_HTML = """
     <div id="recent-parcels"></div>
   </div>
 </div>
-
 <div id="tab-parcels" class="container" style="display:none">
-  <div class="search-bar">
-    <input type="text" id="parcel-search" placeholder="Поиск по трек-номеру или коду..." oninput="filterParcels()">
-  </div>
+  <div class="search-bar"><input type="text" id="parcel-search" placeholder="Поиск по трек-номеру или коду..." oninput="filterParcels()"></div>
   <div id="all-parcels"></div>
 </div>
-
 <div id="tab-users" class="container" style="display:none">
-  <div class="search-bar">
-    <input type="text" id="user-search" placeholder="Поиск по имени или коду..." oninput="filterUsers()">
-  </div>
+  <div class="search-bar"><input type="text" id="user-search" placeholder="Поиск по имени или коду..." oninput="filterUsers()"></div>
   <div id="all-users"></div>
 </div>
-
 <div id="tab-add" class="container" style="display:none">
   <div class="card">
     <h3>➕ Добавить посылку</h3>
@@ -352,18 +321,15 @@ ADMIN_HTML = """
     </div>
   </div>
 </div>
-
 <script>
 const tg = window.Telegram.WebApp;
 tg.ready(); tg.expand();
-
 let allParcels = [], allUsers = [];
 const statusLabels = {
   pending:'⏳ Ожидается', in_china:'🇨🇳 Склад Китай',
   in_transit:'✈️ В пути', in_bishkek:'🇰🇬 Бишкек',
   ready:'✅ К выдаче', delivered:'📦 Выдано'
 };
-
 function showTab(name) {
   ['dashboard','parcels','users','add'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name?'block':'none';
@@ -374,7 +340,6 @@ function showTab(name) {
   if(name==='parcels') renderParcels(allParcels);
   if(name==='users') renderUsers(allUsers);
 }
-
 async function loadData() {
   const [ps, us] = await Promise.all([
     fetch('/api/admin/parcels').then(r=>r.json()),
@@ -382,17 +347,14 @@ async function loadData() {
   ]);
   allParcels = ps.parcels || [];
   allUsers = us.users || [];
-  
   const statusCount = {};
   allParcels.forEach(p => { statusCount[p.status] = (statusCount[p.status]||0)+1; });
-  
   document.getElementById('stats').innerHTML = `
     <div class="stat-box"><div class="stat-num">${allUsers.length}</div><div class="stat-label">👥 Клиентов</div></div>
     <div class="stat-box"><div class="stat-num">${allParcels.length}</div><div class="stat-label">📦 Посылок</div></div>
     <div class="stat-box"><div class="stat-num">${statusCount['in_transit']||0}</div><div class="stat-label">✈️ В пути</div></div>
     <div class="stat-box"><div class="stat-num">${statusCount['ready']||0}</div><div class="stat-label">✅ К выдаче</div></div>
   `;
-  
   document.getElementById('recent-parcels').innerHTML = allParcels.slice(0,5).map(p => `
     <div style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;display:flex;justify-content:space-between">
       <span><b>${p.client_code}</b> · ${p.track_number||'—'}</span>
@@ -400,7 +362,6 @@ async function loadData() {
     </div>
   `).join('') || '<p style="color:#888;text-align:center;padding:20px">Посылок нет</p>';
 }
-
 function renderParcels(list) {
   document.getElementById('all-parcels').innerHTML = list.length ? list.map(p => `
     <div class="parcel-row">
@@ -408,9 +369,7 @@ function renderParcels(list) {
         <span class="row-code">📦 ${p.track_number||'Без трека'}</span>
         <span class="tag">${p.client_code}</span>
       </div>
-      <div style="color:#555;font-size:12px">
-        ${p.full_name||''} · ${p.description||''} · ${p.weight?p.weight+'кг':''}
-      </div>
+      <div style="color:#555;font-size:12px">${p.full_name||''} · ${p.description||''} · ${p.weight?p.weight+'кг':''}</div>
       <div class="actions">
         <select class="status-select" onchange="updateStatus(${p.id}, this.value)">
           ${Object.entries(statusLabels).map(([k,v])=>`<option value="${k}" ${p.status===k?'selected':''}>${v}</option>`).join('')}
@@ -420,7 +379,6 @@ function renderParcels(list) {
     </div>
   `).join('') : '<p style="color:#888;text-align:center;padding:20px">Посылок нет</p>';
 }
-
 function renderUsers(list) {
   document.getElementById('all-users').innerHTML = list.length ? list.map(u => `
     <div class="user-row">
@@ -432,37 +390,32 @@ function renderUsers(list) {
     </div>
   `).join('') : '<p style="color:#888;text-align:center;padding:20px">Клиентов нет</p>';
 }
-
 function filterParcels() {
   const q = document.getElementById('parcel-search').value.toLowerCase();
-  renderParcels(allParcels.filter(p => 
-    (p.track_number||'').toLowerCase().includes(q) || 
+  renderParcels(allParcels.filter(p =>
+    (p.track_number||'').toLowerCase().includes(q) ||
     (p.client_code||'').toLowerCase().includes(q) ||
     (p.full_name||'').toLowerCase().includes(q)
   ));
 }
-
 function filterUsers() {
   const q = document.getElementById('user-search').value.toLowerCase();
-  renderUsers(allUsers.filter(u => 
-    (u.full_name||'').toLowerCase().includes(q) || 
+  renderUsers(allUsers.filter(u =>
+    (u.full_name||'').toLowerCase().includes(q) ||
     (u.client_code||'').toLowerCase().includes(q)
   ));
 }
-
 async function updateStatus(id, status) {
   await fetch('/api/admin/parcel/status', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, status})});
   await loadData();
   renderParcels(allParcels);
 }
-
 async function deleteParcel(id) {
   if(!confirm('Удалить посылку?')) return;
   await fetch('/api/admin/parcel/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id})});
   await loadData();
   renderParcels(allParcels);
 }
-
 async function addParcel() {
   const code = document.getElementById('add-code').value.trim();
   const track = document.getElementById('add-track').value.trim();
@@ -481,7 +434,6 @@ async function addParcel() {
     await loadData();
   } else { alert(data.error || 'Ошибка'); }
 }
-
 loadData();
 </script>
 </body>
@@ -511,14 +463,11 @@ def api_register():
     full_name = data.get("full_name", "").strip()
     phone = data.get("phone", "").strip()
     language = data.get("language", "ru")
-    
     if not telegram_id or not full_name or not phone:
         return jsonify({"success": False, "error": "Заполните все поля"})
-    
     existing = db.get_user(telegram_id)
     if existing:
         return jsonify({"success": True, "client_code": existing["client_code"], "already_exists": True})
-    
     code = db.create_user(telegram_id, full_name, phone, language)
     return jsonify({"success": True, "client_code": code})
 
