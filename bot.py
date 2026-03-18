@@ -1,4 +1,5 @@
 import os
+import asyncio
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton, BotCommand
@@ -30,8 +31,7 @@ async def start_handler(message: Message):
     if user:
         await message.answer(
             f"🌟 **С возвращением, {user['full_name']}!**\n\n"
-            f"🆔 Ваш ID: `{user['client_code']}`\n"
-            f"📞 Ваш номер: {user['phone']}\n\n"
+            f"🆔 Ваш ID: `{user['client_code']}`\n\n"
             "Воспользуйтесь меню ниже для работы с посылками:",
             reply_markup=get_main_keyboard(),
             parse_mode="Markdown"
@@ -61,29 +61,31 @@ async def show_code(message: Message):
 async def show_address(message: Message):
     user = db.get_user(message.from_user.id)
     if not user:
-        await message.answer("❌ Сначала пройдите регистрацию, чтобы получить личный код!")
+        await message.answer("❌ Сначала пройдите регистрацию!")
         return
     
     code = user['client_code']
-    
-    # Формируем адрес по вашему образцу
     address_text = (
         f"📍 **Актуальный адрес склада в Китае:**\n\n"
         f"**收件人 (Получатель):** VXMMM {code}\n"
         f"**电话 (Телефон):** 13545100875\n"
         f"**地址 (Адрес):** 广东省佛山市南海区里广路洲村工业区飞机场13-2号\n"
         f"**（TSL КАРГО）** VXMMM {code}\n\n"
-        f"⚠️ **Важно:** Скопируйте данные выше. Ваш личный идентификатор и метка **VXMMM** уже добавлены в нужные поля."
+        f"Для копирования:\n`广东省佛山市南海区里广路洲村工业区飞机场13-2号 VXMMM {code}`"
     )
-    
     await message.answer(address_text, parse_mode="Markdown")
 
 @dp.message(F.text == "🚩 Мои посылки")
 async def my_parcels(message: Message):
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🔎 Открыть мои посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels"))]
-    ])
-    await message.answer("📦 Здесь вы можете отслеживать статус своих грузов:", reply_markup=kb)
+    # Показываем список посылок прямо в чате
+    parcels = db.get_user_parcels(message.from_user.id)
+    if not parcels:
+        return await message.answer("📦 У вас пока нет посылок в системе.")
+    
+    text = "🚩 **Ваши текущие посылки:**\n\n"
+    for p in parcels:
+        text += f"🔢 `{p['track_number']}`\n⚖️ {p['weight']} кг | 📍 {p['status']}\n───────────────\n"
+    await message.answer(text, parse_mode="Markdown")
 
 @dp.message(F.text == "👤 Профиль")
 async def show_profile(message: Message):
@@ -93,20 +95,18 @@ async def show_profile(message: Message):
             f"👤 **Ваш профиль:**\n\n"
             f"🎫 Код: `{user['client_code']}`\n"
             f"👤 ФИО: {user['full_name']}\n"
-            f"📱 Тел: {user['phone']}\n"
-            f"🌐 Язык: {user['language']}"
+            f"📱 Тел: {user['phone']}"
         )
         await message.answer(text, parse_mode="Markdown")
 
 @dp.message(F.text == "🚫 Запрещенные грузы")
 async def forbidden(message: Message):
     text = (
-        "🚫 **Список запрещенных товаров:**\n\n"
-        "❌ Лекарства, витамины, БАДы\n"
-        "❌ Жидкости (парфюмерия, масла, лаки)\n"
-        "❌ Оружие, ножи, имитация оружия\n"
-        "❌ Электронные сигареты и вейпы\n\n"
-        "⚠️ **Внимание!** За попытку отправки запрещенных товаров предусмотрен штраф от 10 000 до 50 000 сом!"
+        "🚫 **Запрещено к перевозке:**\n\n"
+        "❌ Жидкости, порошки, БАДы\n"
+        "❌ Оружие, ножи, имитации\n"
+        "❌ Электронные сигареты, аккумуляторы\n\n"
+        "⚠️ Попытка отправки запрещенного груза ведет к штрафу!"
     )
     await message.answer(text)
 
@@ -114,42 +114,33 @@ async def forbidden(message: Message):
 async def support(message: Message):
     kb = types.InlineKeyboardMarkup(inline_keyboard=[
         [types.InlineKeyboardButton(text="Написать в WhatsApp", url="https://wa.me/996505600542")],
-        [types.InlineKeyboardButton(text="Написать в Telegram", url="https://t.me/твой_ник")]
+        [types.InlineKeyboardButton(text="Написать в Telegram", url="https://t.me/твой_ник")] # ЗАМЕНИ НА СВОЙ НИК
     ])
-    await message.answer("📞 Если у вас возникли вопросы, наш менеджер поможет:", reply_markup=kb)
+    await message.answer("📞 Наш менеджер поможет вам по любым вопросам:", reply_markup=kb)
 
 @dp.message(F.text == "📖 Инструкция")
 async def guide(message: Message):
     text = (
-        "📖 **Как заказать товар:**\n\n"
-        "1. Пройдите регистрацию и получите личный код.\n"
-        "2. Укажите наш адрес склада в приложении (Taobao, Pinduoduo и т.д.).\n"
-        "3. Обязательно проверьте наличие вашего кода в имени получателя.\n"
-        "4. Следите за статусом в разделе 'Мои посылки'."
+        "📖 **Краткая инструкция:**\n\n"
+        "1. Скопируйте адрес из раздела '📍 Адреса'.\n"
+        "2. Вставьте его в Taobao/Pinduoduo.\n"
+        "3. Ждите уведомление от бота о прибытии товара на склад.\n"
+        "4. Все данные появятся в разделе 'Мои посылки'."
     )
     await message.answer(text)
 
-@dp.message(F.text == "🌐 Язык")
-async def language_choice(message: Message):
-    kb = types.InlineKeyboardMarkup(inline_keyboard=[
-        [types.InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru"),
-         types.InlineKeyboardButton(text="🇰🇬 Кыргызча", callback_data="lang_kg")]
-    ])
-    await message.answer("Выберите удобный язык / Тилди тандаңыз:", reply_markup=kb)
-
-# --- 4. АДМИН ПАНЕЛЬ ---
 @dp.message(Command("admin"))
 async def admin_panel(message: Message):
     if str(message.from_user.id) == str(ADMIN_ID):
         kb = types.InlineKeyboardMarkup(inline_keyboard=[
-            [types.InlineKeyboardButton(text="⚙️ Управление посылками", web_app=WebAppInfo(url=f"{WEBAPP_URL}/admin"))]
+            [types.InlineKeyboardButton(text="⚙️ Админ-панель (Excel)", web_app=WebAppInfo(url=f"{WEBAPP_URL}/admin"))]
         ])
-        await message.answer("👨‍💻 Вы вошли как администратор:", reply_markup=kb)
+        await message.answer("👨‍💻 Доступ разрешен:", reply_markup=kb)
 
-# --- 5. СЛУЖЕБНЫЕ ФУНКЦИИ ---
-async def set_main_menu(bot: Bot):
-    commands = [BotCommand(command="/start", description="Главное меню / Регистрация")]
-    await bot.set_my_commands(commands)
+# --- 4. ЗАПУСК БОТА ---
+async def main():
+    await bot.set_my_commands([BotCommand(command="/start", description="Запустить бота")])
+    await dp.start_polling(bot)
 
-def get_bot_instance(): return bot
-def get_dispatcher_instance(): return dp
+if __name__ == "__main__":
+    asyncio.run(main())
