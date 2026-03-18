@@ -23,6 +23,9 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 db = Database()
 
+# Храним режим админа: True = режим клиента
+admin_client_mode = set()
+
 
 def main_kb(user_id):
     user = db.get_user(user_id)
@@ -38,8 +41,21 @@ def main_kb(user_id):
 def admin_kb():
     kb = [
         [KeyboardButton(text="👥 Все пользователи"), KeyboardButton(text="📦 Все посылки")],
-        [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="📥 Экспорт Excel")]
+        [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="📥 Экспорт Excel")],
+        [KeyboardButton(text="👁 Режим клиента")]
     ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+
+def client_mode_kb(user_id):
+    user = db.get_user(user_id)
+    kb = [
+        [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="🚩 Посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels"))],
+        [KeyboardButton(text="📍 Адреса"), KeyboardButton(text="👤 Профиль")],
+        [KeyboardButton(text="🔙 Вернуться в админ-панель")]
+    ]
+    if not user:
+        kb.insert(0, [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))])
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 
@@ -50,6 +66,7 @@ def is_admin(message: Message) -> bool:
 @dp.message(CommandStart())
 async def start(message: Message):
     if is_admin(message):
+        admin_client_mode.discard(message.from_user.id)
         await message.answer("👑 Добро пожаловать, Администратор!", reply_markup=admin_kb())
     else:
         await message.answer(
@@ -58,9 +75,26 @@ async def start(message: Message):
         )
 
 
+@dp.message(F.text == "👁 Режим клиента")
+async def client_mode(message: Message):
+    if not is_admin(message):
+        return
+    admin_client_mode.add(message.from_user.id)
+    await message.answer("👁 Вы в режиме клиента. Нажмите '🔙 Вернуться в админ-панель' чтобы выйти.",
+                         reply_markup=client_mode_kb(message.from_user.id))
+
+
+@dp.message(F.text == "🔙 Вернуться в админ-панель")
+async def back_to_admin(message: Message):
+    if not is_admin(message):
+        return
+    admin_client_mode.discard(message.from_user.id)
+    await message.answer("👑 Вы вернулись в админ-панель!", reply_markup=admin_kb())
+
+
 @dp.message(F.text == "📦 Мой код")
 async def code(message: Message):
-    if is_admin(message):
+    if is_admin(message) and message.from_user.id not in admin_client_mode:
         return
     user = db.get_user(message.from_user.id)
     if user:
@@ -71,7 +105,7 @@ async def code(message: Message):
 
 @dp.message(F.text == "📍 Адреса")
 async def addr(message: Message):
-    if is_admin(message):
+    if is_admin(message) and message.from_user.id not in admin_client_mode:
         return
     await message.answer(
         "📍 *Склад в Китае:*\n`广东省佛山市南海区里广路洲村工业区飞机场13-2号`",
@@ -81,7 +115,7 @@ async def addr(message: Message):
 
 @dp.message(F.text == "👤 Профиль")
 async def profile(message: Message):
-    if is_admin(message):
+    if is_admin(message) and message.from_user.id not in admin_client_mode:
         return
     user = db.get_user(message.from_user.id)
     if user:
