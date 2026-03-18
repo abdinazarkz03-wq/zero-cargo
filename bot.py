@@ -30,11 +30,11 @@ admin_client_mode = set()
 def main_kb(user_id):
     user = db.get_user(user_id)
     kb = [
-        [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="🚩 Посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels"))],
+        [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="🚩 Посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels?uid={user_id}"))],
         [KeyboardButton(text="📍 Адреса"), KeyboardButton(text="👤 Профиль")]
     ]
     if not user:
-        kb.insert(0, [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))])
+        kb.insert(0, [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register?uid={user_id}"))])
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 
@@ -50,12 +50,12 @@ def admin_kb():
 def client_mode_kb(user_id):
     user = db.get_user(user_id)
     kb = [
-        [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="🚩 Посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels"))],
+        [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="🚩 Посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels?uid={user_id}"))],
         [KeyboardButton(text="📍 Адреса"), KeyboardButton(text="👤 Профиль")],
         [KeyboardButton(text="🔙 Вернуться в админ-панель")]
     ]
     if not user:
-        kb.insert(0, [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))])
+        kb.insert(0, [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register?uid={user_id}"))])
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 
@@ -80,8 +80,10 @@ async def client_mode(message: Message):
     if not is_admin(message):
         return
     admin_client_mode.add(message.from_user.id)
-    await message.answer("👁 Вы в режиме клиента. Нажмите '🔙 Вернуться в админ-панель' чтобы выйти.",
-                         reply_markup=client_mode_kb(message.from_user.id))
+    await message.answer(
+        "👁 Вы в режиме клиента. Нажмите '🔙 Вернуться в админ-панель' чтобы выйти.",
+        reply_markup=client_mode_kb(message.from_user.id)
+    )
 
 
 @dp.message(F.text == "🔙 Вернуться в админ-панель")
