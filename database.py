@@ -2,6 +2,7 @@ import sqlite3
 import os
 from datetime import datetime
 
+# Берем путь к базе из настроек Render или используем стандартный
 DB_PATH = os.environ.get("DB_PATH", "zerocargo.db")
 
 class Database:
@@ -9,6 +10,7 @@ class Database:
         self.init_db()
 
     def get_conn(self):
+        # check_same_thread=False нужен, чтобы база работала и в боте, и в веб-приложении одновременно
         conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         return conn
@@ -16,6 +18,7 @@ class Database:
     def init_db(self):
         conn = self.get_conn()
         cursor = conn.cursor()
+        # Создаем таблицы, если их еще нет
         cursor.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,16 +56,22 @@ class Database:
     def create_user(self, telegram_id, full_name, phone, language="ru"):
         conn = self.get_conn()
         cursor = conn.cursor()
+        # Считаем текущих пользователей для генерации кода (например, ZC-1001)
         cursor.execute("SELECT COUNT(*) as cnt FROM users")
-        count = cursor.fetchone()["cnt"]
+        row = cursor.fetchone()
+        count = row["cnt"] if row else 0
         client_code = f"ZC-{1001 + count}"
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute(
-            "INSERT INTO users (telegram_id, full_name, phone, client_code, language, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (telegram_id, full_name, phone, client_code, language, now)
-        )
-        conn.commit()
-        conn.close()
+        try:
+            cursor.execute(
+                "INSERT INTO users (telegram_id, full_name, phone, client_code, language, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (telegram_id, full_name, phone, client_code, language, now)
+            )
+            conn.commit()
+        except:
+            pass # Если пользователь уже есть
+        finally:
+            conn.close()
         return client_code
 
     def get_user_by_code(self, client_code):
@@ -73,18 +82,14 @@ class Database:
         conn.close()
         return {"telegram_id": row["telegram_id"]} if row else None
 
-    def get_all_users(self):
-        conn = self.get_conn()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users ORDER BY created_at DESC")
-        rows = cursor.fetchall()
-        conn.close()
-        return [dict(r) for r in rows]
-
     def get_user_parcels(self, telegram_id):
         conn = self.get_conn()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM parcels WHERE user_id = (SELECT id FROM users WHERE telegram_id = ?) ORDER BY created_at DESC", (telegram_id,))
+        cursor.execute("""
+            SELECT * FROM parcels 
+            WHERE user_id = (SELECT id FROM users WHERE telegram_id = ?) 
+            ORDER BY created_at DESC
+        """, (telegram_id,))
         rows = cursor.fetchall()
         conn.close()
         return [dict(r) for r in rows]
