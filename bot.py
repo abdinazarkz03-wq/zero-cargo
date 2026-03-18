@@ -24,17 +24,20 @@ def main_kb(user_id):
 
 @dp.message(CommandStart())
 async def start(message: Message):
-    await message.answer("🚀 ZERO CARGO: Используйте меню ниже", reply_markup=main_kb(message.from_user.id))
+    await message.answer("🚀 ZERO CARGO приветствует вас! Используйте меню ниже 👇", 
+                         reply_markup=main_kb(message.from_user.id))
 
 @dp.message(F.text == "📦 Мой код")
 async def code(message: Message):
     user = db.get_user(message.from_user.id)
-    if user: await message.answer(f"Ваш код: `{user['client_code']}`", parse_mode="Markdown")
-    else: await message.answer("Сначала зарегистрируйтесь!")
+    if user: 
+        await message.answer(f"🆔 Ваш код клиента: `{user['client_code']}`", parse_mode="Markdown")
+    else: 
+        await message.answer("❌ Сначала зарегистрируйтесь!")
 
 @dp.message(F.text == "📍 Адреса")
 async def addr(message: Message):
-    await message.answer("📍 Склад Китай:\n`广东省佛山市南海区里广路洲村工业区飞机场13-2号`", parse_mode="Markdown")
+    await message.answer("📍 **Склад в Китае:**\\n`广东省佛山市南海区里广路洲村工业区飞机场13-2号`", parse_mode="Markdown")
 
 async def main():
     await dp.start_polling(bot)
