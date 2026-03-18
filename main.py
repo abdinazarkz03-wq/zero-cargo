@@ -9,11 +9,14 @@ def run_flask():
     app.run(host="0.0.0.0", port=port)
 
 async def main():
-    # Запуск сайта
+    # Запуск Flask в отдельном потоке
     threading.Thread(target=run_flask, daemon=True).start()
-    # Запуск бота
-    print("🚀 Система ZERO CARGO запущена!")
+    # Запуск Telegram бота
+    print("🚀 Система ZERO CARGO запущена и готова к работе!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("🛑 Работа остановлена")
