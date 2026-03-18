@@ -7,72 +7,86 @@ from database import Database
 app = Flask(__name__)
 db = Database()
 
+# Главная страница для проверки работы
 @app.route("/")
-def home(): return "Бот работает!"
+def home():
+    return "Статус: Бот ZERO CARGO работает корректно!"
 
-# Страница регистрации
+# Страница регистрации (Mini App)
 @app.route("/register")
 def register_page():
     return render_template_string('''
         <body style="background:#000;color:#fff;text-align:center;padding:20px;font-family:sans-serif;">
             <h2 style="color:#f3d01a;">РЕГИСТРАЦИЯ</h2>
-            <input id="n" placeholder="ФИО" style="width:80%;padding:10px;margin:10px 0;border-radius:8px;">
-            <input id="p" placeholder="Телефон" style="width:80%;padding:10px;margin:10px 0;border-radius:8px;">
-            <button onclick="reg()" style="width:80%;padding:12px;background:#f3d01a;border:none;border-radius:8px;font-weight:bold;">ОТПРАВИТЬ</button>
+            <input id="n" placeholder="ФИО" style="width:80%;padding:10px;margin:10px 0;border-radius:8px;border:none;">
+            <input id="p" placeholder="Телефон" style="width:80%;padding:10px;margin:10px 0;border-radius:8px;border:none;">
+            <button onclick="reg()" style="width:80%;padding:12px;background:#f3d01a;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:10px;">ОТПРАВИТЬ</button>
             <script src="https://telegram.org/js/telegram-web-app.js"></script>
             <script>
                 const tg = window.Telegram.WebApp;
                 async function reg(){
+                    const name = document.getElementById('n').value;
+                    const phone = document.getElementById('p').value;
+                    if(!name || !phone) return alert('Заполните все поля');
                     const r = await fetch('/api/register', {
                         method:'POST', headers:{'Content-Type':'application/json'},
-                        body: JSON.stringify({telegram_id:tg.initDataUnsafe.user.id, full_name:document.getElementById('n').value, phone:document.getElementById('p').value})
+                        body: JSON.stringify({telegram_id:tg.initDataUnsafe.user.id, full_name:name, phone:phone})
                     });
                     const d = await r.json();
-                    if(d.success) { alert('Регистрация прошла! Ваш код: ' + d.client_code); tg.close(); }
+                    if(d.success) { alert('Успешно! Ваш код: ' + d.client_code); tg.close(); }
                 }
             </script>
         </body>
     ''')
 
-# Страница "Мои посылки"
+# Страница просмотра посылок (Mini App)
 @app.route("/parcels")
 def parcels_page():
     return render_template_string('''
         <body style="background:#000;color:#fff;padding:20px;font-family:sans-serif;">
-            <h3 style="color:#f3d01a;">📦 Мои посылки</h3>
-            <div id="l">Загрузка...</div>
+            <h3 style="color:#f3d01a;text-align:center;">📦 МОИ ПОСЫЛКИ</h3>
+            <div id="l">Загрузка данных...</div>
             <script src="https://telegram.org/js/telegram-web-app.js"></script>
             <script>
                 const tg = window.Telegram.WebApp;
                 async function load(){
-                    const r = await fetch(`/api/user/parcels?tid=${tg.initDataUnsafe.user.id}`);
-                    const d = await r.json();
-                    document.getElementById('l').innerHTML = d.map(p => `
-                        <div style="border:1px solid #333;padding:10px;margin-bottom:10px;border-radius:8px;">
-                            <b>Трек:</b> ${p.track_number}<br><b>Вес:</b> ${p.weight} кг<br>
-                            <b style="color:#f3d01a">Статус: ${p.status}</b>
-                        </div>
-                    `).join('') || "Посылок пока нет";
+                    try {
+                        const r = await fetch(`/api/user/parcels?tid=${tg.initDataUnsafe.user.id}`);
+                        const d = await r.json();
+                        document.getElementById('l').innerHTML = d.map(p => `
+                            <div style="border:1px solid #333;padding:12px;margin-bottom:10px;border-radius:10px;background:#111;">
+                                <div style="font-size:0.9em;color:#aaa;">Трек-номер:</div>
+                                <div style="font-weight:bold;margin-bottom:5px;">${p.track_number}</div>
+                                <div style="display:flex;justify-content:space-between;">
+                                    <span>⚖️ ${p.weight} кг</span>
+                                    <span style="color:#f3d01a;font-weight:bold;">📍 ${p.status}</span>
+                                </div>
+                            </div>
+                        `).join('') || "<div style='text-align:center;margin-top:20px;color:#666;'>У вас пока нет активных посылок</div>";
+                    } catch(e) { document.getElementById('l').innerHTML = "Ошибка загрузки данных"; }
                 }
                 load();
             </script>
         </body>
     ''')
 
-# Админ-панель
+# Админ-панель (Mini App)
 @app.route("/admin")
 def admin_page():
     return render_template_string('''
         <body style="background:#000;color:#fff;text-align:center;padding:20px;font-family:sans-serif;">
-            <h3 style="color:#f3d01a;">Админ-панель</h3>
-            <input type="file" id="f" style="margin:20px 0;">
-            <button onclick="up()" style="width:80%;padding:12px;background:#f3d01a;border:none;border-radius:8px;font-weight:bold;">ЗАГРУЗИТЬ EXCEL</button>
+            <h3 style="color:#f3d01a;">УПРАВЛЕНИЕ ПОСЫЛКАМИ</h3>
+            <p style="font-size:0.8em;color:#aaa;">Выберите Excel-файл для обновления статусов</p>
+            <input type="file" id="f" style="margin:20px 0;color:#fff;">
+            <button onclick="up()" style="width:80%;padding:12px;background:#f3d01a;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">ЗАГРУЗИТЬ ДАННЫЕ</button>
             <script>
                 async function up(){
                     const file = document.getElementById('f').files[0];
+                    if(!file) return alert('Выберите файл');
                     const formData = new FormData(); formData.append('file', file);
                     const r = await fetch('/api/admin/upload_excel', {method:'POST', body:formData});
-                    if(r.ok) alert('Данные успешно загружены!');
+                    if(r.ok) alert('Готово! Сообщения отправлены клиентам.');
+                    else alert('Ошибка при загрузке файла');
                 }
             </script>
         </body>
