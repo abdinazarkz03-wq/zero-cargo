@@ -1,7 +1,9 @@
+import asyncio
 import logging
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import CommandStart, Command
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from database import Database
 
 logging.basicConfig(level=logging.INFO)
@@ -12,178 +14,156 @@ WEBAPP_URL = os.environ.get("WEBAPP_URL", "https://zerocargo-bot.onrender.com")
 WHATSAPP = "996505600542"
 
 db = Database()
-
-RU = {
-    "welcome_new": "👋 Добро пожаловать в <b>ZERO CARGO</b> 🚛📦\n\n💎 Цена: <b>2.8$ за кг</b>\n⏱ Сроки: <b>7–14 дней</b>\n📍 Адрес: ж/м Рухий Мурас\n\nНажмите «Регистрация» чтобы продолжить.",
-    "welcome_back": "👋 Добро пожаловать обратно, <b>{name}</b>!\n🔑 Ваш код: <b>{code}</b>",
-    "not_reg": "❌ Вы не зарегистрированы. Нажмите «Регистрация».",
-    "my_code": "🔑 Код: <b>{code}</b>\n👤 ФИО: <b>{name}</b>\n📱 Тел: <b>{phone}</b>\n📍 ПВЗ: ж/м Рухий Мурас\n📞 Менеджер: +996505600542",
-    "profile": "👤 Профиль:\n🔑 Код: <b>{code}</b>\n👤 ФИО: <b>{name}</b>\n📱 Тел: <b>{phone}</b>\n📍 ПВЗ: ж/м Рухий Мурас\n🗓 Регистрация: <b>{date}</b>",
-    "china": "📍 <b>Адрес склада в Китае:</b>\n\n收件人: VXMMM\n电话: 13545100875\n地址: 广东省佛山市南海区里广路洲村工业区飞机场13-2号\n（TSL КАРГО）VXMMM <b>{code}</b>\n\n⚠️ Укажите ваш код вместо VXMMM",
-    "bishkek": "📍 <b>ПВЗ в Бишкеке:</b>\nж/м Рухий Мурас, Бишкек",
-    "forbidden": "🚫 <b>Запрещённые грузы:</b>\n❌ Лекарства и наркотики\n❌ Взрывчатые вещества\n❌ Острые предметы\n❌ Военные предметы\n❌ Жидкости и порошки\n❌ Электронные сигареты\n\n⚠️ Штраф 10 000 – 50 000 сом!",
-    "support": "💬 <b>Поддержка ZERO CARGO</b>\n📞 +996505600542",
-    "instruction": "📖 <b>Инструкция:</b>\n\n1️⃣ Зарегистрируйтесь и получите код\n2️⃣ При заказе укажите адрес склада в Китае со своим кодом\n3️⃣ Ожидайте посылку\n4️⃣ Отслеживайте в «Мои посылки»\n5️⃣ Получите в ж/м Рухий Мурас",
-    "parcels": "📦 Нажмите кнопку для просмотра посылок:",
-    "lang": "🌐 Выберите язык:",
-}
-
-KY = {
-    "welcome_new": "👋 <b>ZERO CARGO</b> га кош келиңиз 🚛📦\n\n💎 Баасы: <b>2.8$</b>\n⏱ Мөөнөт: <b>7–14 күн</b>\n📍 Дарек: Рухий Мурас\n\n«Катталуу» баскычын басыңыз.",
-    "welcome_back": "👋 Кайра кош келиңиз, <b>{name}</b>!\n🔑 Кодуңуз: <b>{code}</b>",
-    "not_reg": "❌ Катталган эмессиз. «Катталуу» баскычын басыңыз.",
-    "my_code": "🔑 Код: <b>{code}</b>\n👤 АТ: <b>{name}</b>\n📱 Тел: <b>{phone}</b>\n📍 ПВЗ: Рухий Мурас\n📞 Менеджер: +996505600542",
-    "profile": "👤 Профиль:\n🔑 Код: <b>{code}</b>\n👤 АТ: <b>{name}</b>\n📱 Тел: <b>{phone}</b>\n📍 ПВЗ: Рухий Мурас\n🗓 Катталган: <b>{date}</b>",
-    "china": "📍 <b>Кытайдагы кампа:</b>\n\n收件人: VXMMM\n电话: 13545100875\n地址: 广东省佛山市南海区里广路洲村工业区飞机场13-2号\n（TSL КАРГО）VXMMM <b>{code}</b>",
-    "bishkek": "📍 <b>ПВЗ Бишкек:</b>\nРухий Мурас ж/м",
-    "forbidden": "🚫 <b>Тыюу салынган жүктөр:</b>\n❌ Дарылар\n❌ Жарылуучу заттар\n❌ Курч буюмдар\n❌ Аскердик буюмдар\n❌ Суюктуктар\n❌ Электрондук темекилер\n\n⚠️ Айып 10 000 – 50 000 сом!",
-    "support": "💬 <b>ZERO CARGO колдоосу</b>\n📞 +996505600542",
-    "instruction": "📖 <b>Нускама:</b>\n\n1️⃣ Катталып код алыңыз\n2️⃣ Кытайдан заказда кампанын дарегин көрсөтүңүз\n3️⃣ Посылканы күтүңүз\n4️⃣ «Менин посылкаларым» бөлүмүнөн байкаңыз\n5️⃣ Рухий Мурасдан алыңыз",
-    "parcels": "📦 Посылкаларды көрүү үчүн басыңыз:",
-    "lang": "🌐 Тилди тандаңыз:",
-}
-
-def lang(uid):
-    u = db.get_user(uid)
-    return "ky" if u and u.get("language") == "ky" else "ru"
-
-def tx(uid):
-    return KY if lang(uid) == "ky" else RU
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
 
 def main_kb(uid):
-    t = tx(uid)
-    if lang(uid) == "ru":
-        kb = [
-            [KeyboardButton("📦 Мой код"), KeyboardButton("📮 Мои посылки")],
-            [KeyboardButton("📍 Адреса"), KeyboardButton("📖 Инструкция")],
-            [KeyboardButton("👤 Профиль"), KeyboardButton("🚫 Запрещённые грузы")],
-            [KeyboardButton("💬 Поддержка"), KeyboardButton("🌐 Язык")],
-        ]
+    user = db.get_user(uid)
+    lang = user.get("language", "ru") if user else "ru"
+    if lang == "ru":
+        kb = ReplyKeyboardMarkup(keyboard=[
+            [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="📮 Мои посылки")],
+            [KeyboardButton(text="📍 Адреса"), KeyboardButton(text="📖 Инструкция")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🚫 Запрещённые грузы")],
+            [KeyboardButton(text="💬 Поддержка"), KeyboardButton(text="🌐 Язык")],
+        ], resize_keyboard=True)
     else:
-        kb = [
-            [KeyboardButton("📦 Менин кодум"), KeyboardButton("📮 Менин посылкаларым")],
-            [KeyboardButton("📍 Даректер"), KeyboardButton("📖 Нускама")],
-            [KeyboardButton("👤 Профиль"), KeyboardButton("🚫 Тыюу салынган жүктөр")],
-            [KeyboardButton("💬 Колдоо"), KeyboardButton("🌐 Тил")],
-        ]
-    return ReplyKeyboardMarkup(kb, resize_keyboard=True)
+        kb = ReplyKeyboardMarkup(keyboard=[
+            [KeyboardButton(text="📦 Менин кодум"), KeyboardButton(text="📮 Менин посылкаларым")],
+            [KeyboardButton(text="📍 Даректер"), KeyboardButton(text="📖 Нускама")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🚫 Тыюу салынган жүктөр")],
+            [KeyboardButton(text="💬 Колдоо"), KeyboardButton(text="🌐 Тил")],
+        ], resize_keyboard=True)
+    return kb
 
-def reg_kb(uid):
-    l = lang(uid)
-    label = "📝 Регистрация" if l == "ru" else "📝 Катталуу"
-    kb = [[KeyboardButton(label, web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))]]
-    return ReplyKeyboardMarkup(kb, resize_keyboard=True)
+def reg_kb():
+    return ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))]
+    ], resize_keyboard=True)
 
-async def start(update, context):
-    uid = update.effective_user.id
+@dp.message(CommandStart())
+async def start(message: types.Message):
+    uid = message.from_user.id
     u = db.get_user(uid)
     if u:
-        t = tx(uid)
-        await update.message.reply_text(
-            t["welcome_back"].format(name=u["full_name"], code=u["client_code"]),
-            parse_mode="HTML", reply_markup=main_kb(uid))
+        lang = u.get("language", "ru")
+        if lang == "ru":
+            text = f"👋 Добро пожаловать обратно, <b>{u['full_name']}</b>!\n🔑 Ваш код: <b>{u['client_code']}</b>"
+        else:
+            text = f"👋 Кайра кош келиңиз, <b>{u['full_name']}</b>!\n🔑 Кодуңуз: <b>{u['client_code']}</b>"
+        await message.answer(text, parse_mode="HTML", reply_markup=main_kb(uid))
     else:
-        await update.message.reply_text(
-            RU["welcome_new"], parse_mode="HTML", reply_markup=reg_kb(uid))
+        await message.answer(
+            "👋 Добро пожаловать в <b>ZERO CARGO</b> 🚛📦\n\n💎 Цена: <b>2.8$ за кг</b>\n⏱ Сроки: <b>7–14 дней</b>\n📍 Адрес: ж/м Рухий Мурас\n\nНажмите «Регистрация» чтобы продолжить.",
+            parse_mode="HTML", reply_markup=reg_kb())
 
-async def msg(update, context):
-    uid = update.effective_user.id
-    text = update.message.text
+@dp.message(Command("admin"))
+async def admin(message: types.Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔧 Админ-панель", web_app=WebAppInfo(url=f"{WEBAPP_URL}/admin"))]
+    ])
+    await message.answer("🔧 <b>Админ ZERO CARGO</b>", parse_mode="HTML", reply_markup=kb)
+
+@dp.message(F.text.in_(["📦 Мой код", "📦 Менин кодум"]))
+async def my_code(message: types.Message):
+    uid = message.from_user.id
     u = db.get_user(uid)
-    t = tx(uid)
-    l = lang(uid)
-
-    reg_btns = ["📝 Регистрация", "📝 Катталуу"]
-    lang_btns = ["🌐 Язык", "🌐 Тил"]
-    code_btns = ["📦 Мой код", "📦 Менин кодум"]
-    parcel_btns = ["📮 Мои посылки", "📮 Менин посылкаларым"]
-    addr_btns = ["📍 Адреса", "📍 Даректер"]
-    instr_btns = ["📖 Инструкция", "📖 Нускама"]
-    prof_btns = ["👤 Профиль"]
-    forbid_btns = ["🚫 Запрещённые грузы", "🚫 Тыюу салынган жүктөр"]
-    support_btns = ["💬 Поддержка", "💬 Колдоо"]
-
-    if text in reg_btns:
-        kb = [[InlineKeyboardButton("📝 Открыть регистрацию" if l=="ru" else "📝 Каттоону ачуу",
-               web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))]]
-        await update.message.reply_text(
-            "Нажмите:" if l=="ru" else "Басыңыз:",
-            reply_markup=InlineKeyboardMarkup(kb))
+    if not u:
+        await message.answer("❌ Вы не зарегистрированы.", reply_markup=reg_kb())
         return
+    await message.answer(
+        f"🔑 Код: <b>{u['client_code']}</b>\n👤 ФИО: <b>{u['full_name']}</b>\n📱 Тел: <b>{u['phone']}</b>\n📍 ПВЗ: ж/м Рухий Мурас\n📞 Менеджер: +996505600542",
+        parse_mode="HTML", reply_markup=main_kb(uid))
 
-    if text in lang_btns:
-        kb = [[InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
-               InlineKeyboardButton("🇰🇬 Кыргызча", callback_data="lang_ky")]]
-        await update.message.reply_text(RU["lang"], reply_markup=InlineKeyboardMarkup(kb))
-        return
-
-    if not u and text not in lang_btns:
-        await update.message.reply_text(RU["not_reg"], parse_mode="HTML", reply_markup=reg_kb(uid))
-        return
-
-    if text in code_btns:
-        await update.message.reply_text(
-            t["my_code"].format(code=u["client_code"], name=u["full_name"], phone=u["phone"]),
-            parse_mode="HTML", reply_markup=main_kb(uid))
-
-    elif text in parcel_btns:
-        kb = [[InlineKeyboardButton("🔍 Открыть" if l=="ru" else "🔍 Ачуу",
-               web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels?user_id={uid}"))]]
-        await update.message.reply_text(t["parcels"], reply_markup=InlineKeyboardMarkup(kb))
-
-    elif text in addr_btns:
-        await update.message.reply_text(
-            t["china"].format(code=u["client_code"]), parse_mode="HTML")
-        await update.message.reply_text(t["bishkek"], parse_mode="HTML", reply_markup=main_kb(uid))
-
-    elif text in instr_btns:
-        await update.message.reply_text(
-            t["instruction"], parse_mode="HTML", reply_markup=main_kb(uid))
-
-    elif text in prof_btns:
-        await update.message.reply_text(
-            t["profile"].format(code=u["client_code"], name=u["full_name"],
-                                phone=u["phone"], date=u["created_at"][:10]),
-            parse_mode="HTML", reply_markup=main_kb(uid))
-
-    elif text in forbid_btns:
-        await update.message.reply_text(t["forbidden"], parse_mode="HTML", reply_markup=main_kb(uid))
-
-    elif text in support_btns:
-        kb = [[InlineKeyboardButton("💚 WhatsApp", url=f"https://wa.me/{WHATSAPP}")],
-              [InlineKeyboardButton("📱 Telegram", url=f"https://t.me/zerocargo312_bot")]]
-        await update.message.reply_text(t["support"], parse_mode="HTML",
-                                        reply_markup=InlineKeyboardMarkup(kb))
-
-async def cb(update, context):
-    q = update.callback_query
-    uid = q.from_user.id
-    await q.answer()
-    if q.data == "lang_ru":
-        db.update_language(uid, "ru")
-        await q.edit_message_text("✅ Язык: Русский")
-    elif q.data == "lang_ky":
-        db.update_language(uid, "ky")
-        await q.edit_message_text("✅ Тил: Кыргызча")
+@dp.message(F.text.in_(["📮 Мои посылки", "📮 Менин посылкаларым"]))
+async def my_parcels(message: types.Message):
+    uid = message.from_user.id
     u = db.get_user(uid)
-    if u:
-        await context.bot.send_message(uid, "👇", reply_markup=main_kb(uid))
-
-async def admin(update, context):
-    if update.effective_user.id != ADMIN_ID:
+    if not u:
+        await message.answer("❌ Вы не зарегистрированы.", reply_markup=reg_kb())
         return
-    kb = [[InlineKeyboardButton("🔧 Админ-панель",
-           web_app=WebAppInfo(url=f"{WEBAPP_URL}/admin"))]]
-    await update.message.reply_text("🔧 <b>Админ ZERO CARGO</b>",
-                                    parse_mode="HTML", reply_markup=InlineKeyboardMarkup(kb))
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔍 Открыть посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels?user_id={uid}"))]
+    ])
+    await message.answer("📦 Нажмите для просмотра посылок:", reply_markup=kb)
 
-def main():
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("admin", admin))
-    application.add_handler(CallbackQueryHandler(cb))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg))
-    application.run_polling(drop_pending_updates=True)
+@dp.message(F.text.in_(["📍 Адреса", "📍 Даректер"]))
+async def addresses(message: types.Message):
+    uid = message.from_user.id
+    u = db.get_user(uid)
+    if not u:
+        await message.answer("❌ Вы не зарегистрированы.", reply_markup=reg_kb())
+        return
+    await message.answer(
+        f"📍 <b>Адрес склада в Китае:</b>\n\n收件人: VXMMM\n电话: 13545100875\n地址: 广东省佛山市南海区里广路洲村工业区飞机场13-2号\n（TSL КАРГО）VXMMM <b>{u['client_code']}</b>\n\n⚠️ Укажите ваш код вместо VXMMM",
+        parse_mode="HTML")
+    await message.answer("📍 <b>ПВЗ в Бишкеке:</b>\nж/м Рухий Мурас, Бишкек", parse_mode="HTML", reply_markup=main_kb(uid))
+
+@dp.message(F.text.in_(["📖 Инструкция", "📖 Нускама"]))
+async def instruction(message: types.Message):
+    uid = message.from_user.id
+    u = db.get_user(uid)
+    code = u['client_code'] if u else "ВАШ КОД"
+    await message.answer(
+        f"📖 <b>Инструкция:</b>\n\n1️⃣ Зарегистрируйтесь и получите код\n2️⃣ При заказе укажите адрес склада в Китае со своим кодом\n3️⃣ Ожидайте посылку\n4️⃣ Отслеживайте в «Мои посылки»\n5️⃣ Получите в ж/м Рухий Мурас",
+        parse_mode="HTML", reply_markup=main_kb(uid))
+
+@dp.message(F.text.in_(["👤 Профиль"]))
+async def profile(message: types.Message):
+    uid = message.from_user.id
+    u = db.get_user(uid)
+    if not u:
+        await message.answer("❌ Вы не зарегистрированы.", reply_markup=reg_kb())
+        return
+    await message.answer(
+        f"👤 Профиль:\n🔑 Код: <b>{u['client_code']}</b>\n👤 ФИО: <b>{u['full_name']}</b>\n📱 Тел: <b>{u['phone']}</b>\n📍 ПВЗ: ж/м Рухий Мурас\n🗓 Регистрация: <b>{u['created_at'][:10]}</b>",
+        parse_mode="HTML", reply_markup=main_kb(uid))
+
+@dp.message(F.text.in_(["🚫 Запрещённые грузы", "🚫 Тыюу салынган жүктөр"]))
+async def forbidden(message: types.Message):
+    uid = message.from_user.id
+    await message.answer(
+        "🚫 <b>Запрещённые грузы:</b>\n❌ Лекарства и наркотики\n❌ Взрывчатые вещества\n❌ Острые предметы\n❌ Военные предметы\n❌ Жидкости и порошки\n❌ Электронные сигареты\n\n⚠️ Штраф 10 000 – 50 000 сом!",
+        parse_mode="HTML", reply_markup=main_kb(uid))
+
+@dp.message(F.text.in_(["💬 Поддержка", "💬 Колдоо"]))
+async def support(message: types.Message):
+    uid = message.from_user.id
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💚 WhatsApp", url=f"https://wa.me/{WHATSAPP}")],
+        [InlineKeyboardButton(text="📱 Telegram", url="https://t.me/zerocargo312_bot")]
+    ])
+    await message.answer("💬 <b>Поддержка ZERO CARGO</b>\n📞 +996505600542", parse_mode="HTML", reply_markup=kb)
+
+@dp.message(F.text.in_(["🌐 Язык", "🌐 Тил"]))
+async def language(message: types.Message):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru"),
+         InlineKeyboardButton(text="🇰🇬 Кыргызча", callback_data="lang_ky")]
+    ])
+    await message.answer("🌐 Выберите язык:", reply_markup=kb)
+
+@dp.callback_query(F.data.startswith("lang_"))
+async def set_lang(callback: types.CallbackQuery):
+    uid = callback.from_user.id
+    lang = callback.data.split("_")[1]
+    db.update_language(uid, lang)
+    msg = "✅ Язык: Русский" if lang == "ru" else "✅ Тил: Кыргызча"
+    await callback.message.edit_text(msg)
+    await callback.message.answer("👇", reply_markup=main_kb(uid))
+    await callback.answer()
+
+@dp.message(F.text.in_(["📝 Регистрация", "📝 Катталуу"]))
+async def register(message: types.Message):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📝 Открыть регистрацию", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))]
+    ])
+    await message.answer("Нажмите кнопку:", reply_markup=kb)
+
+async def main():
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
