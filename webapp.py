@@ -31,6 +31,7 @@ def register_page():
             <script src="https://telegram.org/js/telegram-web-app.js"></script>
             <script>
                 const tg = window.Telegram.WebApp;
+                tg.expand();
                 async function reg(){
                     const name = document.getElementById('n').value;
                     const phone = document.getElementById('p').value;
@@ -40,7 +41,7 @@ def register_page():
                         body: JSON.stringify({telegram_id: tg.initDataUnsafe.user.id, full_name: name, phone: phone})
                     });
                     const d = await r.json();
-                    if(d.success) { alert('Ваш код: ' + d.client_code); tg.close(); }
+                    if(d.success) { alert('Готово! Ваш личный код: ' + d.client_code); tg.close(); }
                 }
             </script>
         </body>
@@ -70,7 +71,7 @@ def parcels_page():
                     const d = await r.json();
                     document.getElementById('list').innerHTML = d.map(p => `
                         <div class="p-card">
-                            <div>Track: ${p.track_number}</div>
+                            <div>Трек: ${p.track_number}</div>
                             <div class="status">Статус: ${p.status} | ${p.weight}кг</div>
                         </div>
                     `).join('') || "Посылок нет";
@@ -91,6 +92,20 @@ def api_register():
 def api_user_parcels():
     tid = request.args.get('tid')
     return jsonify(db.get_user_parcels(tid))
+
+@app.route("/api/admin/upload_excel", methods=["POST"])
+def upload_excel():
+    file = request.files['file']
+    df = pd.read_excel(file)
+    token = os.getenv("BOT_TOKEN")
+    for _, row in df.iterrows():
+        code, track, desc, weight = str(row.iloc[0]).strip(), str(row.iloc[1]).strip(), str(row.iloc[2]), float(row.iloc[3])
+        if db.add_parcel(code, track, desc, weight):
+            user = db.get_user_by_code(code)
+            if user:
+                msg = f"📦 Посылка на складе!\\n🔢 Трек: {track}\\n⚖️ Вес: {weight} кг"
+                requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": user['telegram_id'], "text": msg})
+    return jsonify({"success": True})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
