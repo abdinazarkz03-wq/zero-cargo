@@ -116,40 +116,60 @@ def parcels_page():
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #000; color: #fff; font-family: sans-serif; padding: 20px; }
         h2 { color: #f3d01a; text-transform: uppercase; text-align: center; margin-bottom: 20px; letter-spacing: 2px; }
+        .add-form { background: #111; border: 1px solid #333; border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+        .add-form h3 { color: #f3d01a; margin-bottom: 10px; font-size: 14px; }
+        input { width: 100%; padding: 12px; margin: 6px 0; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 15px; outline: none; }
+        input:focus { border-color: #f3d01a; }
+        button { width: 100%; padding: 13px; background: #f3d01a; border: none; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; color: #000; margin-top: 8px; }
+        button:disabled { opacity: 0.5; }
+        .msg { margin-top: 8px; font-size: 13px; color: #f3d01a; min-height: 18px; text-align: center; }
         .parcel { background: #111; border: 1px solid #222; border-radius: 10px; padding: 15px; margin-bottom: 12px; }
         .parcel .track { color: #f3d01a; font-weight: bold; font-size: 14px; }
         .parcel .desc { color: #ccc; font-size: 13px; margin-top: 4px; }
         .parcel .status { color: #aaa; font-size: 12px; margin-top: 6px; }
-        .empty { text-align: center; color: #555; margin-top: 40px; font-size: 15px; }
-        .loading { text-align: center; color: #f3d01a; margin-top: 40px; }
+        .empty { text-align: center; color: #555; margin-top: 20px; font-size: 15px; }
+        .loading { text-align: center; color: #f3d01a; margin-top: 20px; }
+        .section-title { color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <h2>🚩 МОИ ПОСЫЛКИ</h2>
+
+    <div class="add-form">
+        <h3>➕ Добавить посылку</h3>
+        <input id="track" type="text" placeholder="Трек-номер">
+        <input id="desc" type="text" placeholder="Описание (например: кроссовки)">
+        <button id="btn" onclick="addParcel()">ДОБАВИТЬ</button>
+        <div class="msg" id="msg"></div>
+    </div>
+
+    <div class="section-title">Мои посылки:</div>
     <div id="content" class="loading">Загрузка...</div>
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        async function loadParcels() {
+        function getUserId() {
             let userId = null;
-
             if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
                 userId = String(tg.initDataUnsafe.user.id);
             }
-
             if (!userId) {
                 const urlParams = new URLSearchParams(window.location.search);
                 userId = urlParams.get('uid');
             }
+            return userId;
+        }
 
+        async function loadParcels() {
+            const userId = getUserId();
             if (!userId) {
                 document.getElementById('content').innerHTML = '<div class="empty">❌ Откройте через Telegram!</div>';
                 return;
             }
-
             try {
                 const res = await fetch('/api/parcels?telegram_id=' + userId);
                 const data = await res.json();
@@ -169,6 +189,44 @@ def parcels_page():
                 document.getElementById('content').innerHTML = '<div class="empty">⚠️ Ошибка загрузки</div>';
             }
         }
+
+        async function addParcel() {
+            const track = document.getElementById('track').value.trim();
+            const desc = document.getElementById('desc').value.trim();
+            const btn = document.getElementById('btn');
+            const msg = document.getElementById('msg');
+            const userId = getUserId();
+
+            if (!track || !desc) { msg.innerText = '⚠️ Заполните все поля!'; return; }
+            if (!userId) { msg.innerText = '❌ Откройте через Telegram!'; return; }
+
+            btn.disabled = true;
+            btn.innerText = 'ОТПРАВКА...';
+            msg.innerText = '';
+
+            try {
+                const res = await fetch('/api/add_parcel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ telegram_id: userId, tracking_number: track, description: desc })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    msg.innerText = '✅ Посылка добавлена!';
+                    document.getElementById('track').value = '';
+                    document.getElementById('desc').value = '';
+                    loadParcels();
+                } else {
+                    msg.innerText = '❌ ' + (data.error || 'Ошибка');
+                }
+            } catch(e) {
+                msg.innerText = '⚠️ Ошибка. Попробуйте снова.';
+            }
+
+            btn.disabled = false;
+            btn.innerText = 'ДОБАВИТЬ';
+        }
+
         loadParcels();
     </script>
 </body>
@@ -200,6 +258,26 @@ def api_parcels():
     try:
         parcels = db.get_parcels(tid)
         return jsonify({"success": True, "parcels": [dict(p) for p in parcels]})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/add_parcel", methods=["POST"])
+def api_add_parcel():
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "Нет данных"}), 400
+    tid = data.get('telegram_id', '').strip()
+    track = data.get('tracking_number', '').strip()
+    desc = data.get('description', '').strip()
+    if not tid or not track or not desc:
+        return jsonify({"success": False, "error": "Заполните все поля"}), 400
+    user = db.get_user(tid)
+    if not user:
+        return jsonify({"success": False, "error": "Сначала зарегистрируйтесь"}), 400
+    try:
+        db.add_parcel(tid, track, desc)
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
