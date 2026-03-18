@@ -45,6 +45,7 @@ def register_page():
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready();
         tg.expand();
 
         async function sendData() {
@@ -60,17 +61,28 @@ def register_page():
             msg.innerText = '';
 
             try {
-                const userId = tg.initDataUnsafe?.user?.id;
+                let userId = null;
+
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+                    userId = String(tg.initDataUnsafe.user.id);
+                }
+
                 if (!userId) {
-                    msg.innerText = '❌ Откройте через Telegram!';
+                    const urlParams = new URLSearchParams(window.location.search);
+                    userId = urlParams.get('uid');
+                }
+
+                if (!userId) {
+                    msg.innerText = '❌ Закройте и откройте заново через Telegram!';
                     btn.disabled = false;
                     btn.innerText = 'ПОЛУЧИТЬ КОД';
                     return;
                 }
+
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ telegram_id: String(userId), full_name: name, phone: phone })
+                    body: JSON.stringify({ telegram_id: userId, full_name: name, phone: phone })
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -118,14 +130,26 @@ def parcels_page():
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready();
         tg.expand();
 
         async function loadParcels() {
-            const userId = tg.initDataUnsafe?.user?.id;
+            let userId = null;
+
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+                userId = String(tg.initDataUnsafe.user.id);
+            }
+
+            if (!userId) {
+                const urlParams = new URLSearchParams(window.location.search);
+                userId = urlParams.get('uid');
+            }
+
             if (!userId) {
                 document.getElementById('content').innerHTML = '<div class="empty">❌ Откройте через Telegram!</div>';
                 return;
             }
+
             try {
                 const res = await fetch('/api/parcels?telegram_id=' + userId);
                 const data = await res.json();
