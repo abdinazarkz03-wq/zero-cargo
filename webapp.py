@@ -37,6 +37,7 @@ def register_page():
                     text-transform: uppercase; font-size: 16px;
                 }
                 button:active { transform: scale(0.98); opacity: 0.9; }
+                button:disabled { background: #555; cursor: not-allowed; }
             </style>
         </head>
         <body>
@@ -66,8 +67,11 @@ def register_page():
                     btn.disabled = true;
                     btn.innerText = 'Загрузка...';
 
+                    // АВТОМАТИЧЕСКИЙ АДРЕС
+                    const apiUrl = window.location.origin + '/api/register';
+
                     try {
-                        const response = await fetch('/api/register', {
+                        const response = await fetch(apiUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -83,13 +87,13 @@ def register_page():
                             alert('Регистрация успешна! Ваш личный код: ' + data.client_code);
                             tg.close();
                         } else {
-                            alert('Ошибка при регистрации. Попробуйте снова.');
+                            alert('Ошибка: ' + (data.error || 'не удалось сохранить данные'));
                             btn.disabled = false;
                             btn.innerText = 'Получить код';
                         }
                     } catch (e) {
                         console.error(e);
-                        alert('Ошибка связи с сервером. Проверьте интернет.');
+                        alert('Ошибка связи с сервером. Попробуйте нажать еще раз через 10 секунд.');
                         btn.disabled = false;
                         btn.innerText = 'Получить код';
                     }
@@ -122,7 +126,8 @@ def parcels_page():
                 const tg = window.Telegram.WebApp;
                 async function load(){
                     try {
-                        const r = await fetch(`/api/user/parcels?tid=${tg.initDataUnsafe.user.id}`);
+                        const apiUrl = window.location.origin + `/api/user/parcels?tid=${tg.initDataUnsafe.user.id}`;
+                        const r = await fetch(apiUrl);
                         const d = await r.json();
                         if (d.length === 0) {
                             document.getElementById('list').innerHTML = '<p style="text-align:center;">У вас пока нет посылок</p>';
@@ -131,7 +136,6 @@ def parcels_page():
                         document.getElementById('list').innerHTML = d.map(p => `
                             <div class="p-card">
                                 <div><b>Трек:</b> ${p.track_number}</div>
-                                <div><b>Описание:</b> ${p.description || 'Нет описания'}</div>
                                 <div class="status">Статус: ${p.status} | ${p.weight}кг</div>
                             </div>
                         `).join('');
@@ -147,11 +151,14 @@ def parcels_page():
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
-    data = request.json
-    if not data or 'telegram_id' not in data:
-        return jsonify({"success": False, "error": "No data"}), 400
-    code = db.create_user(data['telegram_id'], data['full_name'], data['phone'])
-    return jsonify({"success": True, "client_code": code})
+    try:
+        data = request.json
+        if not data or 'telegram_id' not in data:
+            return jsonify({"success": False, "error": "Нет данных пользователя"}), 400
+        code = db.create_user(data['telegram_id'], data['full_name'], data['phone'])
+        return jsonify({"success": True, "client_code": code})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/api/user/parcels")
 def api_user_parcels():
@@ -159,22 +166,6 @@ def api_user_parcels():
     if not tid:
         return jsonify([])
     return jsonify(db.get_user_parcels(tid))
-
-@app.route("/api/admin/upload_excel", methods=["POST"])
-def upload_excel():
-    if 'file' not in request.files:
-        return jsonify({"success": False}), 400
-    file = request.files['file']
-    df = pd.read_excel(file)
-    token = os.getenv("BOT_TOKEN")
-    for _, row in df.iterrows():
-        code, track, desc, weight = str(row.iloc[0]).strip(), str(row.iloc[1]).strip(), str(row.iloc[2]), float(row.iloc[3])
-        if db.add_parcel(code, track, desc, weight):
-            user = db.get_user_by_code(code)
-            if user:
-                msg = f"📦 Посылка на складе!\\n🔢 Трек: {track}\\n⚖️ Вес: {weight} кг"
-                requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": user['telegram_id'], "text": msg})
-    return jsonify({"success": True})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
