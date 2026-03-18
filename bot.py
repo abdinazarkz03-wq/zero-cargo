@@ -1,83 +1,66 @@
-import asyncio
-import logging
 import os
+import json
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
-from database import Database
+from aiogram.types import Message, WebAppInfo
+from database import Database  # Подключаем класс
 
-logging.basicConfig(level=logging.INFO)
+# Данные из Render
+TOKEN = os.getenv("BOT_TOKEN")
+WEBAPP_URL = os.getenv("WEBAPP_URL")
+ADMIN_ID = os.getenv("ADMIN_ID")
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_ID = int(os.environ.get("ADMIN_ID", "0"))
-WEBAPP_URL = os.environ.get("WEBAPP_URL")
-WHATSAPP = "996505600542"
-
-db = Database()
-bot = Bot(token=BOT_TOKEN)
+bot = Bot(token=TOKEN)
 dp = Dispatcher()
+db = Database() # Создаем связь с базой
 
-def main_kb(uid):
-    u = db.get_user(uid)
-    lang = u.get("language", "ru") if u else "ru"
-    if lang == "ru":
-        return ReplyKeyboardMarkup(keyboard=[
-            [KeyboardButton(text="📦 Мой код"), KeyboardButton(text="📮 Мои посылки")],
-            [KeyboardButton(text="📍 Адреса"), KeyboardButton(text="📖 Инструкция")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🚫 Запрещённые грузы")],
-            [KeyboardButton(text="💬 Поддержка"), KeyboardButton(text="🌐 Язык")],
-        ], resize_keyboard=True)
-    return ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="📦 Менин кодум"), KeyboardButton(text="📮 Менин посылкаларым")],
-        [KeyboardButton(text="📍 Даректер"), KeyboardButton(text="📖 Нускама")],
-        [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🚫 Тыюу салынган жүктөр")],
-        [KeyboardButton(text="💬 Колдоо"), KeyboardButton(text="🌐 Тил")],
-    ], resize_keyboard=True)
-
-def reg_kb():
-    return ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=f"{WEBAPP_URL}/register"))]
-    ], resize_keyboard=True)
+def get_main_keyboard():
+    # Важно: ссылка должна вести на /register
+    url = f"{WEBAPP_URL}/register" if not WEBAPP_URL.endswith('/register') else WEBAPP_URL
+    kb = [[types.InlineKeyboardButton(text="📝 Регистрация", web_app=WebAppInfo(url=url))]]
+    return types.InlineKeyboardMarkup(inline_keyboard=kb)
 
 @dp.message(CommandStart())
-async def start(message: types.Message):
-    u = db.get_user(message.from_user.id)
-    if u:
-        await message.answer(f"👋 С возвращением, <b>{u['full_name']}</b>!\n🔑 Код: <b>{u['client_code']}</b>", 
-                           parse_mode="HTML", reply_markup=main_kb(message.from_user.id))
+async def command_start_handler(message: Message):
+    user = db.get_user(message.from_user.id)
+    if user:
+        await message.answer(
+            f"🌟 **С возвращением, {user['full_name']}!**\n\n"
+            f"🆔 Ваш ID: `{user['client_code']}`\n"
+            f"📞 Ваш номер: `{user['phone']}`\n\n"
+            "Вы можете проверить статус посылок в меню.",
+            parse_mode="Markdown"
+        )
     else:
-        await message.answer("👋 Добро пожаловать в <b>ZERO CARGO</b> 🚛📦\nНажмите регистрацию:", 
-                           parse_mode="HTML", reply_markup=reg_kb())
+        await message.answer(
+            "🚀 **ZERO CARGO 312** 🚚\n"
+            "_________________________________\n\n"
+            "Доставляем грузы из Китая быстро и надежно!\n\n"
+            "💎 **Тарифы:** 2.5$ — 2.8$ за кг\n"
+            "⏱ **Сроки:** 7–12 дней\n"
+            "📍 **Адрес:** ж/м Рухий Мурас\n"
+            "_________________________________\n\n"
+            "Пожалуйста, пройдите регистрацию 👇",
+            reply_markup=get_main_keyboard(),
+            parse_mode="Markdown"
+        )
 
-@dp.message(Command("admin"))
-async def admin(message: types.Message):
-    if message.from_user.id == ADMIN_ID:
-        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔧 Админ-панель", web_app=WebAppInfo(url=f"{WEBAPP_URL}/admin"))]])
-        await message.answer("🔧 Управление карго:", reply_markup=kb)
+@dp.message(Command("users"))
+async def show_users(message: Message):
+    if str(message.from_user.id) == str(ADMIN_ID):
+        users = db.get_all_users()
+        if not users:
+            await message.answer("Список пользователей пока пуст.")
+            return
+        text = "👥 **Список клиентов:**\n\n"
+        for u in users:
+            text += f"👤 {u['full_name']} | 📞 {u['phone']} | ID: `{u['client_code']}`\n"
+        await message.answer(text, parse_mode="Markdown")
 
-@dp.message(F.text.in_(["📦 Мой код", "📦 Менин кодум"]))
-async def code(message: types.Message):
-    u = db.get_user(message.from_user.id)
-    if u: await message.answer(f"🔑 Ваш код: <b>{u['client_code']}</b>", parse_mode="HTML")
+# Этот блок теперь просто ловит уведомление, а саму запись делает WebApp
+@dp.message(F.content_type == "web_app_data")
+async def web_app_data_handler(message: Message):
+    await message.answer("✅ Данные получены! Проверяем...")
 
-@dp.message(F.text.in_(["📮 Мои посылки", "📮 Менин посылкаларым"]))
-async def parcels(message: types.Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔍 Посылки", web_app=WebAppInfo(url=f"{WEBAPP_URL}/parcels?user_id={message.from_user.id}"))]])
-    await message.answer("📦 Ваши грузы:", reply_markup=kb)
-
-@dp.message(F.text.in_(["🌐 Язык", "🌐 Тил"]))
-async def lang(message: types.Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🇷🇺 Рус", callback_data="lang_ru"), InlineKeyboardButton(text="🇰🇬 Кырг", callback_data="lang_ky")]
-    ])
-    await message.answer("Выберите язык:", reply_markup=kb)
-
-@dp.callback_query(F.data.startswith("lang_"))
-async def set_lang(call: types.CallbackQuery):
-    db.update_language(call.from_user.id, call.data.split("_")[1])
-    await call.message.answer("✅", reply_markup=main_kb(call.from_user.id))
-    await call.answer()
-
-async def bot_start():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+def get_bot_instance(): return bot
+def get_dispatcher_instance(): return dp
