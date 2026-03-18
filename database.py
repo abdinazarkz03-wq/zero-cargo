@@ -1,0 +1,147 @@
+import sqlite3
+import os
+from datetime import datetime
+
+DB_PATH = os.environ.get("DB_PATH", "zerocargo.db")
+
+class Database:
+    def __init__(self):
+        self.init_db()
+
+    def get_conn(self):
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def init_db(self):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER UNIQUE NOT NULL,
+                full_name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                client_code TEXT UNIQUE NOT NULL,
+                language TEXT DEFAULT 'ru',
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS parcels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                client_code TEXT NOT NULL,
+                track_number TEXT,
+                description TEXT,
+                weight REAL,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+        """)
+        conn.commit()
+        conn.close()
+
+    def get_user(self, telegram_id):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def create_user(self, telegram_id, full_name, phone, language="ru"):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as cnt FROM users")
+        count = cursor.fetchone()["cnt"]
+        client_code = f"ZC-{1001 + count}"
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "INSERT INTO users (telegram_id, full_name, phone, client_code, language, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (telegram_id, full_name, phone, client_code, language, now)
+        )
+        conn.commit()
+        conn.close()
+        return client_code
+
+    def update_language(self, telegram_id, language):
+        conn = self.get_conn()
+        conn.execute("UPDATE users SET language = ? WHERE telegram_id = ?", (language, telegram_id))
+        conn.commit()
+        conn.close()
+
+    def get_all_users(self):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users ORDER BY created_at DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_user_parcels(self, telegram_id):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM parcels WHERE user_id = (SELECT id FROM users WHERE telegram_id = ?) ORDER BY created_at DESC", (telegram_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_parcels_by_code(self, client_code):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM parcels WHERE client_code = ? ORDER BY created_at DESC", (client_code,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_all_parcels(self):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.*, u.full_name, u.phone, u.telegram_id 
+            FROM parcels p LEFT JOIN users u ON p.user_id = u.id 
+            ORDER BY p.created_at DESC
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def add_parcel(self, client_code, track_number, description, weight, status="pending"):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE client_code = ?", (client_code,))
+        user = cursor.fetchone()
+        if not user:
+            conn.close()
+            return False
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute(
+            "INSERT INTO parcels (user_id, client_code, track_number, description, weight, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (user["id"], client_code, track_number, description, weight, status, now, now)
+        )
+        conn.commit()
+        conn.close()
+        return True
+
+    def update_parcel_status(self, parcel_id, status):
+        conn = self.get_conn()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conn.execute("UPDATE parcels SET status = ?, updated_at = ? WHERE id = ?", (status, now, parcel_id))
+        conn.commit()
+        conn.close()
+
+    def delete_parcel(self, parcel_id):
+        conn = self.get_conn()
+        conn.execute("DELETE FROM parcels WHERE id = ?", (parcel_id,))
+        conn.commit()
+        conn.close()
+
+    def search_parcel(self, track_number):
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM parcels WHERE track_number LIKE ?", (f"%{track_number}%",))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
