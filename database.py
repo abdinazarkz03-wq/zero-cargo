@@ -2,6 +2,7 @@ import sqlite3
 import os
 from datetime import datetime
 
+# Путь к базе данных берется из настроек Render или создается локально
 DB_PATH = os.environ.get("DB_PATH", "zerocargo.db")
 
 class Database:
@@ -9,6 +10,7 @@ class Database:
         self.init_db()
 
     def get_conn(self):
+        # Создаем подключение. check_same_thread=False нужен для работы в связке с Flask
         conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         return conn
@@ -16,6 +18,7 @@ class Database:
     def init_db(self):
         conn = self.get_conn()
         cursor = conn.cursor()
+        # Создание таблиц пользователей и посылок
         cursor.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,6 +56,7 @@ class Database:
     def create_user(self, telegram_id, full_name, phone, language="ru"):
         conn = self.get_conn()
         cursor = conn.cursor()
+        # Автоматическая генерация кода клиента (например, ZC-1001)
         cursor.execute("SELECT COUNT(*) as cnt FROM users")
         count = cursor.fetchone()["cnt"]
         client_code = f"ZC-{1001 + count}"
@@ -64,6 +68,15 @@ class Database:
         conn.commit()
         conn.close()
         return client_code
+
+    def get_user_by_code(self, client_code):
+        """Метод необходим для поиска ID пользователя при загрузке Excel по коду"""
+        conn = self.get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT telegram_id FROM users WHERE client_code = ?", (client_code,))
+        row = cursor.fetchone()
+        conn.close()
+        return {"telegram_id": row["telegram_id"]} if row else None
 
     def update_language(self, telegram_id, language):
         conn = self.get_conn()
@@ -98,6 +111,7 @@ class Database:
     def add_parcel(self, client_code, track_number, description, weight, status="pending"):
         conn = self.get_conn()
         cursor = conn.cursor()
+        # Проверяем, существует ли пользователь с таким кодом
         cursor.execute("SELECT id FROM users WHERE client_code = ?", (client_code,))
         user = cursor.fetchone()
         if not user:
